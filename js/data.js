@@ -11,10 +11,40 @@ export async function fetchWithProxy(url) {
 // Worker URL for RSS parsing
 const WORKER_URL = 'https://situation-monitor-proxy.seanthielen-e.workers.dev';
 
+// Simple in-memory cache for Worker responses (avoids network hop on re-renders)
+const workerCache = new Map();
+const CACHE_TTL = 3 * 60 * 1000; // 3 minutes (Worker edge cache is 5 min)
+
+function getCachedWorkerResponse(url) {
+    const entry = workerCache.get(url);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > CACHE_TTL) {
+        workerCache.delete(url);
+        return null;
+    }
+    return entry.data;
+}
+
+function setCachedWorkerResponse(url, data) {
+    // Limit cache size to prevent memory bloat
+    if (workerCache.size > 100) {
+        const oldest = workerCache.keys().next().value;
+        workerCache.delete(oldest);
+    }
+    workerCache.set(url, { data, timestamp: Date.now() });
+}
+
 // Fetch RSS feed using Cloudflare Worker with built-in RSS-to-JSON parsing
 export async function fetchFeedViaJson(source) {
+    const proxyUrl = `${WORKER_URL}/?url=${encodeURIComponent(source.url)}&format=json`;
+
+    // Check memory cache first
+    const cached = getCachedWorkerResponse(proxyUrl);
+    if (cached) {
+        return cached.map(item => ({ ...item, _cached: true }));
+    }
+
     try {
-        const proxyUrl = `${WORKER_URL}/?url=${encodeURIComponent(source.url)}&format=json`;
         const response = await fetch(proxyUrl);
 
         if (!response.ok) {
@@ -24,14 +54,18 @@ export async function fetchFeedViaJson(source) {
         const data = await response.json();
         if (data.status !== 'ok' || !data.items) return [];
 
-        return data.items.slice(0, 5).map(item => ({
+        const items = data.items.slice(0, 5).map(item => ({
             source: source.name,
             title: (item.title || 'No title').trim(),
             link: item.link || '',
             pubDate: item.pubDate || '',
             isAlert: hasAlertKeyword(item.title || ''),
-            _cached: response.headers.get('X-Cache') === 'HIT'
+            _cached: false
         }));
+
+        // Cache the result
+        setCachedWorkerResponse(proxyUrl, items);
+        return items;
     } catch (e) {
         console.log(`Worker failed for ${source.name}, trying XML fallback...`);
         return null; // Signal to try XML fallback
