@@ -1,0 +1,13 @@
+# Package managers
+package-lock.json
+pnpm-lock.yaml
+
+# Build output
+.svelte-kit
+build
+dist
+
+# Legacy files (until migrated)
+js/
+styles.css
+index.html
