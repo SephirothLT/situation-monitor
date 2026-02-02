@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Panel, Badge } from '$lib/components/common';
 	import { timeAgo } from '$lib/utils';
+	import { settings } from '$lib/stores';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 	import type { CustomMonitor } from '$lib/types';
 	import type { MonitorMatch } from '$lib/stores/monitors';
 
@@ -28,19 +30,21 @@
 
 	const activeMonitors = $derived(monitors.filter((m) => m.enabled));
 	const count = $derived(matches.length);
+	const title = $derived(getPanelName('monitors', $settings.locale));
+	const t = $derived(UI_TEXTS[$settings.locale].monitors);
 
 	function getMatchesForMonitor(monitorId: string): MonitorMatch[] {
 		return matches.filter((m) => m.monitor.id === monitorId).slice(0, 3);
 	}
 </script>
 
-<Panel id="monitors" title="Custom Monitors" {count} {loading} {error}>
+<Panel id="monitors" {title} {count} {loading} {error}>
 	<div class="monitors-content">
 		{#if monitors.length === 0 && !loading && !error}
 			<div class="empty-state">
 				<p>No monitors configured</p>
 				{#if onCreateMonitor}
-					<button class="create-btn" onclick={onCreateMonitor}> + Create Monitor </button>
+					<button class="create-btn" onclick={onCreateMonitor}>+ {t.createMonitor}</button>
 				{/if}
 			</div>
 		{:else}
@@ -70,13 +74,13 @@
 										class="action-btn"
 										class:active={monitor.enabled}
 										onclick={() => onToggleMonitor?.(monitor.id)}
-										title={monitor.enabled ? 'Disable' : 'Enable'}
+										title={monitor.enabled ? t.disable : t.enable}
 									>
 										{monitor.enabled ? '●' : '○'}
 									</button>
 								{/if}
 								{#if onEditMonitor}
-									<button class="action-btn" onclick={() => onEditMonitor?.(monitor)} title="Edit">
+									<button class="action-btn" onclick={() => onEditMonitor?.(monitor)} title={t.edit}>
 										✎
 									</button>
 								{/if}
@@ -84,7 +88,7 @@
 									<button
 										class="action-btn delete"
 										onclick={() => onDeleteMonitor?.(monitor.id)}
-										title="Delete"
+										title={t.delete}
 									>
 										×
 									</button>

@@ -21,7 +21,8 @@
 		SituationPanel,
 		WorldLeadersPanel,
 		PrinterPanel,
-		FedPanel
+		FedPanel,
+		BlockBeatsPanel
 	} from '$lib/components/panels';
 	import {
 		news,
@@ -29,6 +30,10 @@
 		monitors,
 		settings,
 		refresh,
+		cryptoList,
+		commodityList,
+		whaleAddresses,
+		blockbeats,
 		allNewsItems,
 		fedIndicators,
 		fedNews
@@ -38,15 +43,16 @@
 		fetchAllMarkets,
 		fetchPolymarket,
 		fetchWhaleTransactions,
+		fetchWhaleBalances,
 		fetchGovContracts,
 		fetchLayoffs,
 		fetchWorldLeaders,
 		fetchFedIndicators,
 		fetchFedNews
 	} from '$lib/api';
-	import type { Prediction, WhaleTransaction, Contract, Layoff } from '$lib/api';
+	import type { Prediction, WhaleTransaction, WhaleBalance, Contract, Layoff } from '$lib/api';
 	import type { CustomMonitor, WorldLeader } from '$lib/types';
-	import type { PanelId } from '$lib/config';
+	import { getPanelName, getSituationConfig, type PanelId } from '$lib/config';
 
 	// Modal state
 	let settingsOpen = $state(false);
@@ -56,7 +62,10 @@
 
 	// Misc panel data
 	let predictions = $state<Prediction[]>([]);
+	let predictionsLoading = $state(false);
+	let predictionsError = $state<string | null>(null);
 	let whales = $state<WhaleTransaction[]>([]);
+	let whaleBalances = $state<WhaleBalance[]>([]);
 	let contracts = $state<Contract[]>([]);
 	let layoffs = $state<Layoff[]>([]);
 	let leaders = $state<WorldLeader[]>([]);
@@ -80,7 +89,9 @@
 
 	async function loadMarkets() {
 		try {
-			const data = await fetchAllMarkets();
+			const cryptoCoins = cryptoList.getSelectedConfig();
+			const commodityConfigs = commodityList.getSelectedConfig();
+			const data = await fetchAllMarkets(cryptoCoins, commodityConfigs);
 			markets.setIndices(data.indices);
 			markets.setSectors(data.sectors);
 			markets.setCommodities(data.commodities);
@@ -91,19 +102,27 @@
 	}
 
 	async function loadMiscData() {
+		predictionsLoading = true;
+		predictionsError = null;
 		try {
-			const [predictionsData, whalesData, contractsData, layoffsData] = await Promise.all([
+			const whaleAddrs = whaleAddresses.getAddresses();
+			const [predictionsData, whalesData, balancesData, contractsData, layoffsData] = await Promise.all([
 				fetchPolymarket(),
-				fetchWhaleTransactions(),
+				fetchWhaleTransactions(whaleAddrs),
+				fetchWhaleBalances(whaleAddrs),
 				fetchGovContracts(),
 				fetchLayoffs()
 			]);
 			predictions = predictionsData;
 			whales = whalesData;
+			whaleBalances = balancesData;
 			contracts = contractsData;
 			layoffs = layoffsData;
 		} catch (error) {
 			console.error('Failed to load misc data:', error);
+			predictionsError = error instanceof Error ? error.message : String(error);
+		} finally {
+			predictionsLoading = false;
 		}
 	}
 
@@ -120,7 +139,7 @@
 	}
 
 	async function loadFedData() {
-		if (!isPanelVisible('fed')) return;
+		if (!isPanelVisible('fed') && !isPanelVisible('printer')) return;
 		fedIndicators.setLoading(true);
 		fedNews.setLoading(true);
 		try {
@@ -135,10 +154,15 @@
 	}
 
 	// Refresh handlers
+	async function loadBlockBeats() {
+		if (!isPanelVisible('blockbeats')) return;
+		await blockbeats.load($settings.locale);
+	}
+
 	async function handleRefresh() {
 		refresh.startRefresh();
 		try {
-			await Promise.all([loadNews(), loadMarkets()]);
+			await Promise.all([loadNews(), loadMarkets(), loadMiscData(), loadBlockBeats()]);
 			refresh.endRefresh();
 		} catch (error) {
 			refresh.endRefresh([String(error)]);
@@ -200,7 +224,8 @@
 					loadMarkets(),
 					loadMiscData(),
 					loadWorldLeaders(),
-					loadFedData()
+					loadFedData(),
+					loadBlockBeats()
 				]);
 				refresh.endRefresh();
 			} catch (error) {
@@ -236,31 +261,31 @@
 			<!-- News Panels -->
 			{#if isPanelVisible('politics')}
 				<div class="panel-slot">
-					<NewsPanel category="politics" panelId="politics" title="Politics" />
+					<NewsPanel category="politics" panelId="politics" title={getPanelName('politics', $settings.locale)} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('tech')}
 				<div class="panel-slot">
-					<NewsPanel category="tech" panelId="tech" title="Tech" />
+					<NewsPanel category="tech" panelId="tech" title={getPanelName('tech', $settings.locale)} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('finance')}
 				<div class="panel-slot">
-					<NewsPanel category="finance" panelId="finance" title="Finance" />
+					<NewsPanel category="finance" panelId="finance" title={getPanelName('finance', $settings.locale)} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('gov')}
 				<div class="panel-slot">
-					<NewsPanel category="gov" panelId="gov" title="Government" />
+					<NewsPanel category="gov" panelId="gov" title={getPanelName('gov', $settings.locale)} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('ai')}
 				<div class="panel-slot">
-					<NewsPanel category="ai" panelId="ai" title="AI" />
+					<NewsPanel category="ai" panelId="ai" title={getPanelName('ai', $settings.locale)} />
 				</div>
 			{/if}
 
@@ -279,13 +304,13 @@
 
 			{#if isPanelVisible('commodities')}
 				<div class="panel-slot">
-					<CommoditiesPanel />
+					<CommoditiesPanel onCommodityListChange={loadMarkets} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('crypto')}
 				<div class="panel-slot">
-					<CryptoPanel />
+					<CryptoPanel onCryptoListChange={loadMarkets} />
 				</div>
 			{/if}
 
@@ -315,6 +340,13 @@
 				</div>
 			{/if}
 
+			<!-- BlockBeats Flash -->
+			{#if isPanelVisible('blockbeats')}
+				<div class="panel-slot">
+					<BlockBeatsPanel />
+				</div>
+			{/if}
+
 			<!-- Fed Panel -->
 			{#if isPanelVisible('fed')}
 				<div class="panel-slot">
@@ -331,12 +363,13 @@
 
 			<!-- Situation Panels -->
 			{#if isPanelVisible('venezuela')}
+				{@const sc = getSituationConfig('venezuela', $settings.locale)}
 				<div class="panel-slot">
 					<SituationPanel
 						panelId="venezuela"
 						config={{
-							title: 'Venezuela Watch',
-							subtitle: 'Humanitarian crisis monitoring',
+							title: sc.title,
+							subtitle: sc.subtitle,
 							criticalKeywords: ['maduro', 'caracas', 'venezuela', 'guaido']
 						}}
 						news={$allNewsItems.filter(
@@ -349,12 +382,13 @@
 			{/if}
 
 			{#if isPanelVisible('greenland')}
+				{@const sc = getSituationConfig('greenland', $settings.locale)}
 				<div class="panel-slot">
 					<SituationPanel
 						panelId="greenland"
 						config={{
-							title: 'Greenland Watch',
-							subtitle: 'Arctic geopolitics monitoring',
+							title: sc.title,
+							subtitle: sc.subtitle,
 							criticalKeywords: ['greenland', 'arctic', 'nuuk', 'denmark']
 						}}
 						news={$allNewsItems.filter(
@@ -367,12 +401,13 @@
 			{/if}
 
 			{#if isPanelVisible('iran')}
+				{@const sc = getSituationConfig('iran', $settings.locale)}
 				<div class="panel-slot">
 					<SituationPanel
 						panelId="iran"
 						config={{
-							title: 'Iran Crisis',
-							subtitle: 'Revolution protests, regime instability & nuclear program',
+							title: sc.title,
+							subtitle: sc.subtitle,
 							criticalKeywords: [
 								'protest',
 								'uprising',
@@ -399,13 +434,17 @@
 			<!-- Placeholder panels for additional data sources -->
 			{#if isPanelVisible('whales')}
 				<div class="panel-slot">
-					<WhalePanel {whales} />
+					<WhalePanel {whales} balances={whaleBalances} onWhaleListChange={loadMiscData} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('polymarket')}
 				<div class="panel-slot">
-					<PolymarketPanel {predictions} />
+					<PolymarketPanel
+						predictions={predictions}
+						loading={predictionsLoading}
+						error={predictionsError}
+					/>
 				</div>
 			{/if}
 
@@ -424,7 +463,11 @@
 			<!-- Money Printer Panel -->
 			{#if isPanelVisible('printer')}
 				<div class="panel-slot">
-					<PrinterPanel />
+					<PrinterPanel
+						data={$fedIndicators.data?.printer ?? null}
+						loading={$fedIndicators.loading}
+						error={$fedIndicators.error}
+					/>
 				</div>
 			{/if}
 

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Panel, Badge } from '$lib/components/common';
 	import { getRelativeTime } from '$lib/utils';
-	import { intelNews } from '$lib/stores';
+	import { intelNews, settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 	import type { NewsItem } from '$lib/types';
 
 	type SourceType = 'osint' | 'govt' | 'think-tank' | 'defense' | 'regional' | 'cyber';
@@ -49,6 +50,7 @@
 
 	const items = $derived(storeItems.map(transformToIntelItem));
 	const count = $derived(items.length);
+	const title = $derived(getPanelName('intel', $settings.locale));
 
 	type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -63,7 +65,7 @@
 	}
 </script>
 
-<Panel id="intel" title="Intel Feed" {count} {loading} {error}>
+<Panel id="intel" {title} {count} {loading} {error}>
 	{#if items.length === 0 && !loading && !error}
 		<div class="empty-state">No intel available</div>
 	{:else}

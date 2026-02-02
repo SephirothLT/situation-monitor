@@ -90,10 +90,18 @@ Unique business logic for intelligence analysis:
 
 ## Deployment
 
-GitHub Actions workflow builds with `BASE_PATH=/situation-monitor` and deploys to GitHub Pages at `https://hipcityreg.github.io/situation-monitor/`
+GitHub Actions workflow builds with `BASE_PATH=/situation-monitor` and deploys to GitHub Pages at `https://hipcityreg.github.io/situation-monitor/`. The app may also be deployed to Vercel (see `vercel.json`).
+
+**Production env vars**: Vite embeds `VITE_*` at **build time**. For production (Vercel, Netlify, etc.) to show real data, add these in the host’s **Environment Variables** and rebuild:
+
+- `VITE_ETHERSCAN_API_KEY` – 巨鲸动向：0x 地址的真实交易与余额（不配置则显示模拟数据）
+- `VITE_FRED_API_KEY` – 美联储 / 印钞机
+- `VITE_FINNHUB_API_KEY` – 市场
+- `VITE_INTELLIZENCE_API_KEY` – 裁员追踪（可选，否则用 layoffs.fyi / CSV）
 
 ## External Dependencies
 
 - **D3.js** for interactive map visualization
 - **CORS proxy** (Cloudflare Worker) for RSS feed parsing
 - **CoinGecko API** for cryptocurrency data
+- **Layoffs**: Without `VITE_INTELLIZENCE_API_KEY`, the layoffs panel uses the omswa513/Layoffs GitHub CSV (historical). With the key, it uses Intellizence Layoff Dataset API for recent/real-time data.

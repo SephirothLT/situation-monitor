@@ -1,0 +1,511 @@
+/**
+ * 中英文界面文案与 getPanelName / getPreset
+ */
+
+import type { PanelId } from './panels';
+
+export type Locale = 'zh' | 'en';
+
+const PANEL_NAMES: Record<Locale, Record<PanelId, string>> = {
+	zh: {
+		map: '全球地图',
+		politics: '国际 / 地缘',
+		tech: '科技 / AI',
+		finance: '财经',
+		gov: '政府 / 政策',
+		heatmap: '板块热力图',
+		markets: '市场',
+		monitors: '我的监控',
+		commodities: '大宗 / VIX',
+		crypto: '加密货币',
+		polymarket: 'Polymarket',
+		whales: '巨鲸动向',
+		mainchar: '主角分析',
+		printer: '印钞机',
+		contracts: '政府合同',
+		ai: 'AI 军备',
+		layoffs: '裁员追踪',
+		venezuela: '委内瑞拉局势',
+		greenland: '格陵兰局势',
+		iran: '伊朗局势',
+		leaders: '世界领导人',
+		intel: '情报源',
+		correlation: '相关性引擎',
+		narrative: '叙事追踪',
+		fed: '美联储',
+		blockbeats: 'BlockBeats 快讯'
+	},
+	en: {
+		map: 'Global Map',
+		politics: 'World / Geopolitical',
+		tech: 'Technology / AI',
+		finance: 'Financial',
+		gov: 'Government / Policy',
+		heatmap: 'Sector Heatmap',
+		markets: 'Markets',
+		monitors: 'My Monitors',
+		commodities: 'Commodities / VIX',
+		crypto: 'Crypto',
+		polymarket: 'Polymarket',
+		whales: 'Whale Watch',
+		mainchar: 'Main Character',
+		printer: 'Money Printer',
+		contracts: 'Gov Contracts',
+		ai: 'AI Arms Race',
+		layoffs: 'Layoffs Tracker',
+		venezuela: 'Venezuela Situation',
+		greenland: 'Greenland Situation',
+		iran: 'Iran Situation',
+		leaders: 'World Leaders',
+		intel: 'Intel Feed',
+		correlation: 'Correlation Engine',
+		narrative: 'Narrative Tracker',
+		fed: 'Federal Reserve',
+		blockbeats: 'BlockBeats Flash'
+	}
+};
+
+const PRESET_TEXTS: Record<Locale, Record<string, { name: string; description: string }>> = {
+	zh: {
+		'news-junkie': { name: '资讯优先', description: '政治、科技、财经要闻与主角分析' },
+		trader: { name: '交易员', description: '股票、加密货币、大宗与预测市场' },
+		geopolitics: { name: '地缘观察', description: '全球态势与区域热点' },
+		intel: { name: '情报分析', description: '深度分析、模式与叙事追踪' },
+		minimal: { name: '极简', description: '仅保留地图、新闻与市场' },
+		everything: { name: '全部', description: '启用所有面板' }
+	},
+	en: {
+		'news-junkie': { name: 'News Junkie', description: 'Breaking news across politics, tech, and finance' },
+		trader: { name: 'Trader', description: 'Market-focused: stocks, crypto, commodities' },
+		geopolitics: { name: 'Geopolitics Watcher', description: 'Global situation and regional hotspots' },
+		intel: { name: 'Intelligence Analyst', description: 'Deep analysis and narrative tracking' },
+		minimal: { name: 'Minimal', description: 'Just map, news, and markets' },
+		everything: { name: 'Everything', description: 'All panels enabled' }
+	}
+};
+
+export const UI_TEXTS: Record<
+	Locale,
+	{
+		header: { logo: string; refreshing: string; lastUpdated: string; neverRefreshed: string; settings: string };
+		modal: { close: string };
+		settings: {
+			title: string;
+			language: string;
+			background: string;
+			themeDark: string;
+			themeLight: string;
+			enabledPanels: string;
+			sectionDesc: string;
+			reconfigure: string;
+			btnHint: string;
+			reset: string;
+		};
+		onboarding: {
+			welcome: string;
+			subtitle: string;
+			skip: string;
+			hint: string;
+			panelsCount: string;
+		};
+		monitorForm: {
+			editMonitor: string;
+			createMonitor: string;
+			name: string;
+			keywords: string;
+			placeholderName: string;
+			placeholderKeywords: string;
+			formHint: string;
+			enabled: string;
+			delete: string;
+			cancel: string;
+			saveChanges: string;
+			create: string;
+			nameRequired: string;
+			keywordRequired: string;
+			maxMonitors: string;
+		};
+		common: { retry: string };
+		situation: {
+			venezuela: { title: string; subtitle: string };
+			greenland: { title: string; subtitle: string };
+			iran: { title: string; subtitle: string };
+		};
+		panels: {
+			globalSituation: string;
+			fedBalance: string;
+			mainCharLabel: string;
+			mainCharMentions: string;
+			panelsCount: string;
+			closePanel: string;
+		};
+		map: { zoomIn: string; zoomOut: string; reset: string };
+		/** Map place names (oceans, chokepoints, hotspots) for i18n */
+		mapPlaces: {
+			oceans: Record<string, string>;
+			chokepoints: Record<string, string>;
+			hotspots: Record<string, string>;
+		};
+		monitors: { createMonitor: string; disable: string; enable: string; edit: string; delete: string };
+		fed: { noApiKey: string };
+		crypto: { addCoin: string; addCoinModalTitle: string; remove: string; maxReached: string; searchPlaceholder: string; noMatch: string; allAdded: string };
+		whale: { addAddress: string; addAddressModalTitle: string; addressPlaceholder: string; invalidAddress: string; maxReached: string; watchedAddresses: string; remove: string; emptyHint: string; emptyTx: string; confirmAdd: string; balanceSection: string; transactionsSection: string; emptyBalance: string; productionHint: string };
+		/** Panel header status labels (VIX + situation threat level) */
+		status: { highFear: string; elevated: string; low: string; critical: string; monitoring: string };
+		/** Commodity display names by symbol (^VIX, GC=F, etc.) */
+		commodities: Record<string, string>;
+		/** Add-commodity modal / picker (大宗添加) */
+		commodityPicker: { addCommodity: string; addCommodityModalTitle: string; remove: string; maxReached: string; searchPlaceholder: string; noMatch: string; allAdded: string };
+	}
+> = {
+	zh: {
+		header: {
+			logo: '态势监控',
+			refreshing: '刷新中…',
+			lastUpdated: '更新时间：',
+			neverRefreshed: '尚未刷新',
+			settings: '设置'
+		},
+		modal: { close: '关闭' },
+		settings: {
+			title: '设置',
+			language: '语言',
+			background: '背景颜色',
+			themeDark: '深色',
+			themeLight: '白色',
+			enabledPanels: '启用面板',
+			sectionDesc: '开关面板以自定义仪表盘',
+			reconfigure: '重新配置仪表盘',
+			btnHint: '选择预设以切换面板组合',
+			reset: '恢复全部默认'
+		},
+		onboarding: {
+			welcome: '欢迎使用态势监控',
+			subtitle: '选择一种配置开始使用',
+			skip: '跳过',
+			hint: '之后可在设置中修改',
+			panelsCount: '个面板'
+		},
+		monitorForm: {
+			editMonitor: '编辑监控',
+			createMonitor: '新建监控',
+			name: '名称',
+			keywords: '关键词（逗号分隔）',
+			placeholderName: '例如：乌克兰局势',
+			placeholderKeywords: '例如：ukraine, zelensky, kyiv',
+			formHint: '命中任一关键词的新闻会出现在该监控中',
+			enabled: '启用',
+			delete: '删除',
+			cancel: '取消',
+			saveChanges: '保存',
+			create: '创建',
+			nameRequired: '请填写名称',
+			keywordRequired: '请至少填写一个关键词',
+			maxMonitors: '监控数量已达上限（20）'
+		},
+		common: { retry: '重试' },
+		situation: {
+			venezuela: { title: '委内瑞拉局势', subtitle: '人道危机与政局' },
+			greenland: { title: '格陵兰局势', subtitle: '北极地缘' },
+			iran: {
+				title: '伊朗局势',
+				subtitle: '抗议、政局与核计划'
+			}
+		},
+		panels: {
+			globalSituation: '全球态势',
+			fedBalance: '美联储资产负债表',
+			mainCharLabel: '今日主角',
+			mainCharMentions: '次出现在标题中',
+			panelsCount: '个面板',
+			closePanel: '关闭面板'
+		},
+		map: { zoomIn: '放大', zoomOut: '缩小', reset: '重置' },
+		mapPlaces: {
+			oceans: {
+				ATLANTIC: '大西洋',
+				PACIFIC: '太平洋',
+				INDIAN: '印度洋',
+				ARCTIC: '北冰洋',
+				SOUTHERN: '南大洋'
+			},
+			chokepoints: {
+				Suez: '苏伊士',
+				Panama: '巴拿马',
+				Hormuz: '霍尔木兹',
+				Malacca: '马六甲',
+				'Bab el-M': '曼德海峡',
+				Gibraltar: '直布罗陀',
+				Bosporus: '博斯普鲁斯'
+			},
+			hotspots: {
+				DC: '华盛顿',
+				Moscow: '莫斯科',
+				Beijing: '北京',
+				Kyiv: '基辅',
+				Taipei: '台北',
+				Tehran: '德黑兰',
+				'Tel Aviv': '特拉维夫',
+				London: '伦敦',
+				Brussels: '布鲁塞尔',
+				Pyongyang: '平壤',
+				Riyadh: '利雅得',
+				Delhi: '德里',
+				Singapore: '新加坡',
+				Tokyo: '东京',
+				Caracas: '加拉加斯',
+				Nuuk: '努克'
+			}
+		},
+		monitors: {
+			createMonitor: '新建监控',
+			disable: '禁用',
+			enable: '启用',
+			edit: '编辑',
+			delete: '删除'
+		},
+		fed: { noApiKey: '配置 VITE_FRED_API_KEY 后可显示经济指标' },
+		crypto: {
+			addCoin: '添加币种',
+			addCoinModalTitle: '添加币种',
+			remove: '移除',
+			maxReached: '最多添加 20 个币种',
+			searchPlaceholder: '搜索名称或代号',
+			noMatch: '无匹配',
+			allAdded: '已全部添加'
+		},
+		whale: {
+			addAddress: '添加地址',
+			addAddressModalTitle: '添加巨鲸地址',
+			addressPlaceholder: '粘贴钱包地址，如 0x... 或 bc1...',
+			invalidAddress: '地址格式无效或过短',
+			maxReached: '最多 30 个地址',
+			watchedAddresses: '监控的地址',
+			remove: '移除',
+			emptyHint: '添加要监控的巨鲸钱包地址，将显示其大额转账',
+			emptyTx: '暂无该地址的转账记录',
+			confirmAdd: '添加',
+			balanceSection: '余额',
+			transactionsSection: '交易',
+			emptyBalance: '暂无余额',
+			productionHint: ''
+		},
+		status: {
+			highFear: '高恐慌',
+			elevated: '升高',
+			low: '低',
+			critical: '严重',
+			monitoring: '监控中'
+		},
+		commodities: {
+			'^VIX': 'VIX',
+			'GC=F': '黄金',
+			'CL=F': '原油',
+			'NG=F': '天然气',
+			'SI=F': '白银',
+			'HG=F': '铜',
+			'PL=F': '铂金',
+			'PA=F': '钯金',
+			'ZW=F': '小麦',
+			'ZC=F': '玉米',
+			'SB=F': '糖'
+		},
+		commodityPicker: {
+			addCommodity: '添加大宗',
+			addCommodityModalTitle: '添加大宗品种',
+			remove: '移除',
+			maxReached: '最多 15 个品种',
+			searchPlaceholder: '搜索名称或代号',
+			noMatch: '无匹配',
+			allAdded: '已全部添加'
+		}
+	},
+	en: {
+		header: {
+			logo: 'SITUATION MONITOR',
+			refreshing: 'Refreshing...',
+			lastUpdated: 'Last updated: ',
+			neverRefreshed: 'Never refreshed',
+			settings: 'Settings'
+		},
+		modal: { close: 'Close' },
+		settings: {
+			title: 'Settings',
+			language: 'Language',
+			background: 'Background',
+			themeDark: 'Dark',
+			themeLight: 'Light',
+			enabledPanels: 'Enabled Panels',
+			sectionDesc: 'Toggle panels on/off to customize your dashboard',
+			reconfigure: 'Reconfigure Dashboard',
+			btnHint: 'Choose a preset profile for your panels',
+			reset: 'Reset All Settings'
+		},
+		onboarding: {
+			welcome: 'Welcome to Situation Monitor',
+			subtitle: 'Choose a dashboard configuration to get started',
+			skip: 'Skip onboarding',
+			hint: 'You can change this later in Settings',
+			panelsCount: ' panels'
+		},
+		monitorForm: {
+			editMonitor: 'Edit Monitor',
+			createMonitor: 'Create Monitor',
+			name: 'Name',
+			keywords: 'Keywords (comma separated)',
+			placeholderName: 'e.g., Ukraine Crisis',
+			placeholderKeywords: 'e.g., ukraine, zelensky, kyiv',
+			formHint: 'News matching any of these keywords will appear in your monitor',
+			enabled: 'Enabled',
+			delete: 'Delete',
+			cancel: 'Cancel',
+			saveChanges: 'Save Changes',
+			create: 'Create Monitor',
+			nameRequired: 'Name is required',
+			keywordRequired: 'At least one keyword is required',
+			maxMonitors: 'Maximum number of monitors reached (20)'
+		},
+		common: { retry: 'Retry' },
+		situation: {
+			venezuela: { title: 'Venezuela Watch', subtitle: 'Humanitarian crisis monitoring' },
+			greenland: { title: 'Greenland Watch', subtitle: 'Arctic geopolitics monitoring' },
+			iran: {
+				title: 'Iran Crisis',
+				subtitle: 'Revolution protests, regime instability & nuclear program'
+			}
+		},
+		panels: {
+			globalSituation: 'Global Situation',
+			fedBalance: 'Federal Reserve Balance Sheet',
+			mainCharLabel: "Today's Main Character",
+			mainCharMentions: 'mentions in headlines',
+			panelsCount: ' panels',
+			closePanel: 'Close panel'
+		},
+		map: { zoomIn: 'Zoom in', zoomOut: 'Zoom out', reset: 'Reset' },
+		mapPlaces: {
+			oceans: {
+				ATLANTIC: 'Atlantic',
+				PACIFIC: 'Pacific',
+				INDIAN: 'Indian',
+				ARCTIC: 'Arctic',
+				SOUTHERN: 'Southern'
+			},
+			chokepoints: {
+				Suez: 'Suez',
+				Panama: 'Panama',
+				Hormuz: 'Hormuz',
+				Malacca: 'Malacca',
+				'Bab el-M': 'Bab el-Mandeb',
+				Gibraltar: 'Gibraltar',
+				Bosporus: 'Bosporus'
+			},
+			hotspots: {
+				DC: 'DC',
+				Moscow: 'Moscow',
+				Beijing: 'Beijing',
+				Kyiv: 'Kyiv',
+				Taipei: 'Taipei',
+				Tehran: 'Tehran',
+				'Tel Aviv': 'Tel Aviv',
+				London: 'London',
+				Brussels: 'Brussels',
+				Pyongyang: 'Pyongyang',
+				Riyadh: 'Riyadh',
+				Delhi: 'Delhi',
+				Singapore: 'Singapore',
+				Tokyo: 'Tokyo',
+				Caracas: 'Caracas',
+				Nuuk: 'Nuuk'
+			}
+		},
+		monitors: {
+			createMonitor: 'Create Monitor',
+			disable: 'Disable',
+			enable: 'Enable',
+			edit: 'Edit',
+			delete: 'Delete'
+		},
+		fed: { noApiKey: 'Add VITE_FRED_API_KEY for economic indicators' },
+		crypto: {
+			addCoin: 'Add coin',
+			addCoinModalTitle: 'Add coin',
+			remove: 'Remove',
+			maxReached: 'Max 20 coins',
+			searchPlaceholder: 'Search name or symbol',
+			noMatch: 'No match',
+			allAdded: 'All added'
+		},
+		whale: {
+			addAddress: 'Add address',
+			addAddressModalTitle: 'Add whale address',
+			addressPlaceholder: 'Paste wallet address, e.g. 0x... or bc1...',
+			invalidAddress: 'Invalid or too short address',
+			maxReached: 'Max 30 addresses',
+			watchedAddresses: 'Watched addresses',
+			remove: 'Remove',
+			emptyHint: 'Add whale wallet addresses to monitor their large transfers',
+			emptyTx: 'No transactions for these addresses yet',
+			confirmAdd: 'Add',
+			balanceSection: 'Balance',
+			transactionsSection: 'Transactions',
+			emptyBalance: 'No balance',
+			productionHint: 'In production, set VITE_ETHERSCAN_API_KEY in your build platform (e.g. Vercel) to show real chain data'
+		},
+		status: {
+			highFear: 'HIGH FEAR',
+			elevated: 'ELEVATED',
+			low: 'LOW',
+			critical: 'CRITICAL',
+			monitoring: 'MONITORING'
+		},
+		commodities: {
+			'^VIX': 'VIX',
+			'GC=F': 'Gold',
+			'CL=F': 'Crude Oil',
+			'NG=F': 'Natural Gas',
+			'SI=F': 'Silver',
+			'HG=F': 'Copper',
+			'PL=F': 'Platinum',
+			'PA=F': 'Palladium',
+			'ZW=F': 'Wheat',
+			'ZC=F': 'Corn',
+			'SB=F': 'Sugar'
+		},
+		commodityPicker: {
+			addCommodity: 'Add commodity',
+			addCommodityModalTitle: 'Add commodity',
+			remove: 'Remove',
+			maxReached: 'Max 15 commodities',
+			searchPlaceholder: 'Search name or symbol',
+			noMatch: 'No match',
+			allAdded: 'All added'
+		}
+	}
+};
+
+export function getPanelName(panelId: PanelId, locale: Locale): string {
+	return PANEL_NAMES[locale][panelId] ?? panelId;
+}
+
+export function getPresetText(
+	presetId: string,
+	locale: Locale
+): { name: string; description: string } {
+	const t = PRESET_TEXTS[locale][presetId];
+	return t ?? { name: presetId, description: '' };
+}
+
+export function getSituationConfig(
+	key: 'venezuela' | 'greenland' | 'iran',
+	locale: Locale
+): { title: string; subtitle: string } {
+	return UI_TEXTS[locale].situation[key];
+}
+
+export type MapPlaceType = 'oceans' | 'chokepoints' | 'hotspots';
+
+export function getMapPlaceName(locale: Locale, type: MapPlaceType, key: string): string {
+	const places = UI_TEXTS[locale].mapPlaces[type];
+	return places?.[key] ?? key;
+}

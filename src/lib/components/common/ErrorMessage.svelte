@@ -1,17 +1,22 @@
 <script lang="ts">
+	import { settings } from '$lib/stores';
+	import { UI_TEXTS } from '$lib/config';
+
 	interface Props {
 		message: string;
 		retry?: () => void;
 	}
 
 	let { message, retry }: Props = $props();
+
+	const retryLabel = $derived(UI_TEXTS[$settings.locale].common.retry);
 </script>
 
 <div class="error-container">
 	<div class="error-icon">⚠</div>
 	<div class="error-message">{message}</div>
 	{#if retry}
-		<button class="retry-btn" onclick={retry}>Retry</button>
+		<button class="retry-btn" onclick={retry}>{retryLabel}</button>
 	{/if}
 </div>
 

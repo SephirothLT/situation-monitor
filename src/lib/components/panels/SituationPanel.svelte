@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
 	import { timeAgo } from '$lib/utils';
-	import type { PanelId } from '$lib/config';
+	import { settings } from '$lib/stores';
+	import { UI_TEXTS, type PanelId } from '$lib/config';
 	import type { NewsItem } from '$lib/types';
 
 	interface SituationConfig {
@@ -20,15 +21,14 @@
 
 	let { panelId, config, news = [], loading = false, error = null }: Props = $props();
 
-	// Calculate threat level based on news
-	const threatLevel = $derived(calculateThreatLevel(news, config.criticalKeywords));
+	type ThreatLevelKey = 'critical' | 'elevated' | 'monitoring';
 
 	function calculateThreatLevel(
 		newsItems: NewsItem[],
 		criticalKeywords: string[] = []
-	): { level: string; text: string } {
+	): { level: string; textKey: ThreatLevelKey } {
 		if (newsItems.length === 0) {
-			return { level: 'monitoring', text: 'MONITORING' };
+			return { level: 'monitoring', textKey: 'monitoring' };
 		}
 
 		const now = Date.now();
@@ -42,19 +42,22 @@
 		);
 
 		if (hasCritical || recentNews.length >= 3) {
-			return { level: 'critical', text: 'CRITICAL' };
+			return { level: 'critical', textKey: 'critical' };
 		}
 		if (recentNews.length >= 1) {
-			return { level: 'elevated', text: 'ELEVATED' };
+			return { level: 'elevated', textKey: 'elevated' };
 		}
-		return { level: 'monitoring', text: 'MONITORING' };
+		return { level: 'monitoring', textKey: 'monitoring' };
 	}
+
+	const threatLevel = $derived(calculateThreatLevel(news, config.criticalKeywords));
+	const threatStatusText = $derived(UI_TEXTS[$settings.locale].status[threatLevel.textKey]);
 </script>
 
 <Panel
 	id={panelId}
 	title={config.title}
-	status={threatLevel.text}
+	status={threatStatusText}
 	statusClass={threatLevel.level}
 	{loading}
 	{error}

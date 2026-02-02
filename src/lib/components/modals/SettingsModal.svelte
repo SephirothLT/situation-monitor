@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
 	import { settings } from '$lib/stores';
-	import { PANELS, type PanelId } from '$lib/config';
+	import { PANELS, UI_TEXTS, getPanelName, type PanelId, type Locale } from '$lib/config';
 
 	interface Props {
 		open: boolean;
@@ -11,6 +11,8 @@
 
 	let { open = false, onClose, onReconfigure }: Props = $props();
 
+	const t = $derived(UI_TEXTS[$settings.locale]);
+
 	function handleTogglePanel(panelId: PanelId) {
 		settings.togglePanel(panelId);
 	}
@@ -18,13 +20,61 @@
 	function handleResetPanels() {
 		settings.reset();
 	}
+
+	function setLocale(locale: Locale) {
+		settings.setLocale(locale);
+	}
+
+	function setTheme(theme: 'dark' | 'light') {
+		settings.setTheme(theme);
+	}
 </script>
 
-<Modal {open} title="Settings" {onClose}>
+<Modal {open} title={t.settings.title} closeLabel={t.modal.close} {onClose}>
 	<div class="settings-sections">
 		<section class="settings-section">
-			<h3 class="section-title">Enabled Panels</h3>
-			<p class="section-desc">Toggle panels on/off to customize your dashboard</p>
+			<h3 class="section-title">{t.settings.language}</h3>
+			<div class="locale-buttons">
+				<button
+					class="locale-btn"
+					class:active={$settings.locale === 'zh'}
+					onclick={() => setLocale('zh')}
+				>
+					中文
+				</button>
+				<button
+					class="locale-btn"
+					class:active={$settings.locale === 'en'}
+					onclick={() => setLocale('en')}
+				>
+					English
+				</button>
+			</div>
+		</section>
+
+		<section class="settings-section">
+			<h3 class="section-title">{t.settings.background}</h3>
+			<div class="theme-buttons">
+				<button
+					class="theme-btn"
+					class:active={$settings.theme === 'dark'}
+					onclick={() => setTheme('dark')}
+				>
+					{t.settings.themeDark}
+				</button>
+				<button
+					class="theme-btn"
+					class:active={$settings.theme === 'light'}
+					onclick={() => setTheme('light')}
+				>
+					{t.settings.themeLight}
+				</button>
+			</div>
+		</section>
+
+		<section class="settings-section">
+			<h3 class="section-title">{t.settings.enabledPanels}</h3>
+			<p class="section-desc">{t.settings.sectionDesc}</p>
 
 			<div class="panels-grid">
 				{#each Object.entries(PANELS) as [id, config]}
@@ -36,7 +86,7 @@
 							checked={isEnabled}
 							onchange={() => handleTogglePanel(panelId)}
 						/>
-						<span class="panel-name">{config.name}</span>
+						<span class="panel-name">{getPanelName(panelId, $settings.locale)}</span>
 						<span class="panel-priority">P{config.priority}</span>
 					</label>
 				{/each}
@@ -46,10 +96,10 @@
 		<section class="settings-section">
 			<h3 class="section-title">Dashboard</h3>
 			{#if onReconfigure}
-				<button class="reconfigure-btn" onclick={onReconfigure}> Reconfigure Dashboard </button>
-				<p class="btn-hint">Choose a preset profile for your panels</p>
+				<button class="reconfigure-btn" onclick={onReconfigure}>{t.settings.reconfigure}</button>
+				<p class="btn-hint">{t.settings.btnHint}</p>
 			{/if}
-			<button class="reset-btn" onclick={handleResetPanels}> Reset All Settings </button>
+			<button class="reset-btn" onclick={handleResetPanels}>{t.settings.reset}</button>
 		</section>
 	</div>
 </Modal>
@@ -65,6 +115,61 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+	}
+
+	.locale-buttons {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.locale-btn {
+		padding: 0.4rem 0.8rem;
+		background: rgba(255, 255, 255, 0.02);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		color: var(--text-secondary);
+		font-size: 0.7rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.locale-btn:hover {
+		background: rgba(255, 255, 255, 0.05);
+		color: var(--text-primary);
+	}
+
+	.locale-btn.active {
+		border-color: var(--accent);
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	.theme-buttons {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.theme-btn {
+		padding: 0.4rem 0.8rem;
+		background: rgba(255, 255, 255, 0.02);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		color: var(--text-secondary);
+		font-size: 0.7rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.theme-btn:hover {
+		background: rgba(255, 255, 255, 0.05);
+		color: var(--text-primary);
+	}
+
+	.theme-btn.active {
+		border-color: var(--accent);
+		background: rgba(255, 255, 255, 0.1);
+		color: var(--accent);
 	}
 
 	.section-title {

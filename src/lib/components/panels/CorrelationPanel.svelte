@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Panel, Badge } from '$lib/components/common';
+	import { settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 	import { analyzeCorrelations } from '$lib/analysis/correlation';
 	import type { NewsItem } from '$lib/types';
 
@@ -12,6 +14,7 @@
 	let { news = [], loading = false, error = null }: Props = $props();
 
 	const analysis = $derived(analyzeCorrelations(news));
+	const title = $derived(getPanelName('correlation', $settings.locale));
 
 	function getLevelVariant(level: string): 'default' | 'warning' | 'danger' | 'success' | 'info' {
 		switch (level) {
@@ -46,7 +49,7 @@
 	}
 </script>
 
-<Panel id="correlation" title="Pattern Analysis" {loading} {error}>
+<Panel id="correlation" {title} {loading} {error}>
 	{#if news.length === 0 && !loading && !error}
 		<div class="empty-state">Insufficient data for analysis</div>
 	{:else if analysis}

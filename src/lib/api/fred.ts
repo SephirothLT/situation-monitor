@@ -5,7 +5,11 @@
  * Get your free API key at: https://fred.stlouisfed.org/docs/api/api_key.html
  */
 
+import { browser } from '$app/environment';
 import { FRED_API_KEY, FRED_BASE_URL, logger, fetchWithProxy } from '$lib/config/api';
+
+/** Use CORS proxy in browser so FRED API requests are not blocked */
+const fredFetch = browser ? fetchWithProxy : fetch;
 
 export interface FredObservation {
 	date: string;
@@ -26,10 +30,20 @@ export interface EconomicIndicator {
 	date: string | null;
 }
 
+/** Fed balance sheet (printer) - value in trillions USD, WoW change */
+export interface FedPrinterData {
+	value: number;
+	change: number;
+	changePercent: number;
+	percentOfMax: number;
+}
+
 export interface FedIndicators {
 	fedFundsRate: EconomicIndicator;
 	cpi: EconomicIndicator;
 	treasury10Y: EconomicIndicator;
+	/** Fed total assets (WALCL) for Money Printer panel; set when FRED key configured */
+	printer?: FedPrinterData | null;
 }
 
 /**
@@ -60,7 +74,7 @@ function createEmptyIndicator(seriesId: string, name: string, unit: string): Eco
 async function fetchFredSeries(seriesId: string): Promise<FredObservation[]> {
 	try {
 		const url = `${FRED_BASE_URL}/series/observations?series_id=${seriesId}&api_key=${FRED_API_KEY}&file_type=json&sort_order=desc&limit=2`;
-		const response = await fetch(url);
+		const response = await fredFetch(url);
 
 		if (!response.ok) {
 			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -127,7 +141,7 @@ async function fetchCPI(): Promise<EconomicIndicator> {
 	try {
 		// Fetch 14 observations: current + 12 months ago, plus previous month + 13 months ago
 		const url = `${FRED_BASE_URL}/series/observations?series_id=${seriesId}&api_key=${FRED_API_KEY}&file_type=json&sort_order=desc&limit=14`;
-		const response = await fetch(url);
+		const response = await fredFetch(url);
 
 		if (!response.ok) {
 			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -200,18 +214,51 @@ async function fetchTreasury10Y(): Promise<EconomicIndicator> {
 }
 
 /**
- * Fetch all Fed economic indicators
+ * Fetch Fed balance sheet (WALCL - Total Assets, weekly, millions USD).
+ * Returns printer data for Money Printer panel: value in T USD, WoW change.
+ */
+async function fetchFedBalanceSheet(): Promise<FedPrinterData | null> {
+	const seriesId = 'WALCL';
+	if (!isFredConfigured()) return null;
+	try {
+		const observations = await fetchFredSeries(seriesId);
+		const current = parseValue(observations[0]);
+		const previous = parseValue(observations[1]);
+		if (current == null) return null;
+		// WALCL is in millions of USD → value in trillions = current / 1e6 (millions) then / 1e6 (to trillions) = current/1e6? No: 1T = 1e12, 1M = 1e6, so value_T = current_M * 1e6 / 1e12 = current_M / 1e3.
+		const valueT = current / 1000;
+		const previousT = previous != null ? previous / 1000 : valueT;
+		const changeT = previous != null ? valueT - previousT : 0;
+		const changePercent = previous != null && previousT !== 0 ? (changeT / previousT) * 100 : 0;
+		// Rough max ~9T for gauge (post-2020 peak); cap display at 100%
+		const ROUGH_MAX_T = 9;
+		const percentOfMax = Math.min((valueT / ROUGH_MAX_T) * 100, 100);
+		return {
+			value: Math.round(valueT * 100) / 100,
+			change: Math.round(changeT * 1000) / 1000,
+			changePercent: Math.round(changePercent * 100) / 100,
+			percentOfMax
+		};
+	} catch (e) {
+		logger.error('FRED API', 'Error fetching WALCL:', e);
+		return null;
+	}
+}
+
+/**
+ * Fetch all Fed economic indicators (including balance sheet for Printer panel)
  */
 export async function fetchFedIndicators(): Promise<FedIndicators> {
 	logger.log('FRED API', 'Fetching Fed indicators');
 
-	const [fedFundsRate, cpi, treasury10Y] = await Promise.all([
+	const [fedFundsRate, cpi, treasury10Y, printer] = await Promise.all([
 		fetchFedFundsRate(),
 		fetchCPI(),
-		fetchTreasury10Y()
+		fetchTreasury10Y(),
+		fetchFedBalanceSheet()
 	]);
 
-	return { fedFundsRate, cpi, treasury10Y };
+	return { fedFundsRate, cpi, treasury10Y, printer: printer ?? undefined };
 }
 
 // ============================================================================

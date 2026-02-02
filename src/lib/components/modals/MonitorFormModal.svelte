@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
-	import { monitors } from '$lib/stores';
+	import { monitors, settings } from '$lib/stores';
+	import { UI_TEXTS } from '$lib/config';
 	import type { CustomMonitor } from '$lib/types';
 
 	interface Props {
@@ -15,6 +16,8 @@
 	let keywords = $state('');
 	let enabled = $state(true);
 	let error = $state('');
+
+	const t = $derived(UI_TEXTS[$settings.locale].monitorForm);
 
 	// Reset form when modal opens
 	$effect(() => {
@@ -42,24 +45,22 @@
 			.filter((k) => k.length > 0);
 
 		if (!trimmedName) {
-			error = 'Name is required';
+			error = t.nameRequired;
 			return;
 		}
 
 		if (keywordList.length === 0) {
-			error = 'At least one keyword is required';
+			error = t.keywordRequired;
 			return;
 		}
 
 		if (editMonitor) {
-			// Update existing monitor
 			monitors.updateMonitor(editMonitor.id, {
 				name: trimmedName,
 				keywords: keywordList,
 				enabled
 			});
 		} else {
-			// Create new monitor
 			const result = monitors.addMonitor({
 				name: trimmedName,
 				keywords: keywordList,
@@ -67,7 +68,7 @@
 			});
 
 			if (!result) {
-				error = 'Maximum number of monitors reached (20)';
+				error = t.maxMonitors;
 				return;
 			}
 		}
@@ -83,48 +84,48 @@
 	}
 </script>
 
-<Modal {open} title={editMonitor ? 'Edit Monitor' : 'Create Monitor'} {onClose}>
+<Modal {open} title={editMonitor ? t.editMonitor : t.createMonitor} closeLabel={UI_TEXTS[$settings.locale].modal.close} {onClose}>
 	<form class="monitor-form" onsubmit={handleSubmit}>
 		{#if error}
 			<div class="form-error">{error}</div>
 		{/if}
 
 		<div class="form-group">
-			<label for="monitor-name">Name</label>
+			<label for="monitor-name">{t.name}</label>
 			<input
 				id="monitor-name"
 				type="text"
 				bind:value={name}
-				placeholder="e.g., Ukraine Crisis"
+				placeholder={t.placeholderName}
 				maxlength="50"
 			/>
 		</div>
 
 		<div class="form-group">
-			<label for="monitor-keywords">Keywords (comma separated)</label>
+			<label for="monitor-keywords">{t.keywords}</label>
 			<input
 				id="monitor-keywords"
 				type="text"
 				bind:value={keywords}
-				placeholder="e.g., ukraine, zelensky, kyiv"
+				placeholder={t.placeholderKeywords}
 			/>
-			<p class="form-hint">News matching any of these keywords will appear in your monitor</p>
+			<p class="form-hint">{t.formHint}</p>
 		</div>
 
 		<div class="form-group">
 			<label class="checkbox-label">
 				<input type="checkbox" bind:checked={enabled} />
-				<span>Enabled</span>
+				<span>{t.enabled}</span>
 			</label>
 		</div>
 
 		<div class="form-actions">
 			{#if editMonitor}
-				<button type="button" class="delete-btn" onclick={handleDelete}> Delete </button>
+				<button type="button" class="delete-btn" onclick={handleDelete}>{t.delete}</button>
 			{/if}
-			<button type="button" class="cancel-btn" onclick={onClose}> Cancel </button>
+			<button type="button" class="cancel-btn" onclick={onClose}>{t.cancel}</button>
 			<button type="submit" class="submit-btn">
-				{editMonitor ? 'Save Changes' : 'Create Monitor'}
+				{editMonitor ? t.saveChanges : t.create}
 			</button>
 		</div>
 	</form>

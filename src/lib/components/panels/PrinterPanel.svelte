@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
+	import { settings } from '$lib/stores';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 
 	interface Props {
 		data?: {
@@ -17,14 +19,16 @@
 	const isExpanding = $derived(data && data.change > 0);
 	const status = $derived(isExpanding ? 'PRINTER ON' : 'PRINTER OFF');
 	const statusClass = $derived(isExpanding ? 'critical' : 'monitoring');
+	const title = $derived(getPanelName('printer', $settings.locale));
+	const fedLabel = $derived(UI_TEXTS[$settings.locale].panels.fedBalance);
 </script>
 
-<Panel id="printer" title="Money Printer" {status} {statusClass} {loading} {error}>
+<Panel id="printer" {title} {status} {statusClass} {loading} {error}>
 	{#if !data && !loading && !error}
 		<div class="empty-state">No Fed data available</div>
 	{:else if data}
 		<div class="printer-gauge">
-			<div class="printer-label">Federal Reserve Balance Sheet</div>
+			<div class="printer-label">{fedLabel}</div>
 			<div class="printer-value">
 				{data.value.toFixed(2)}<span class="printer-unit">T USD</span>
 			</div>

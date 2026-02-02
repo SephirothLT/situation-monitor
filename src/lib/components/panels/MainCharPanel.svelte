@@ -1,22 +1,24 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
-	import { allNewsItems } from '$lib/stores';
+	import { allNewsItems, settings } from '$lib/stores';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 	import { calculateMainCharacter, type MainCharacterResults } from '$lib/analysis';
 
-	// Calculate main character from all news (reactive via derived store)
 	const results: MainCharacterResults = $derived(calculateMainCharacter($allNewsItems));
 	const topChar = $derived(results.topCharacter);
 	const rankings = $derived(results.characters);
+	const title = $derived(getPanelName('mainchar', $settings.locale));
+	const t = $derived(UI_TEXTS[$settings.locale].panels);
 </script>
 
-<Panel id="mainchar" title="Main Character">
+<Panel id="mainchar" {title}>
 	{#if !topChar}
 		<div class="empty-state">No data yet</div>
 	{:else}
 		<div class="main-char-display">
-			<div class="main-char-label">Today's Main Character</div>
+			<div class="main-char-label">{t.mainCharLabel}</div>
 			<div class="main-char-name">{topChar.name}</div>
-			<div class="main-char-count">{topChar.count} mentions in headlines</div>
+			<div class="main-char-count">{topChar.count} {t.mainCharMentions}</div>
 
 			{#if rankings.length > 1}
 				<div class="main-char-list">

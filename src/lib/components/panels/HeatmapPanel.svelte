@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { Panel, HeatmapCell } from '$lib/components/common';
-	import { sectors } from '$lib/stores';
+	import { sectors, settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 
 	const items = $derived($sectors.items);
 	const loading = $derived($sectors.loading);
 	const error = $derived($sectors.error);
+	const title = $derived(getPanelName('heatmap', $settings.locale));
 </script>
 
-<Panel id="heatmap" title="Sector Heatmap" {loading} {error}>
+<Panel id="heatmap" {title} {loading} {error}>
 	{#if items.length === 0 && !loading && !error}
 		<div class="empty-state">No sector data available</div>
 	{:else}

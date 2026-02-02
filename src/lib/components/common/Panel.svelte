@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { PanelId } from '$lib/config';
+	import { settings } from '$lib/stores';
+	import { UI_TEXTS } from '$lib/config';
 
 	interface Props {
 		id: PanelId;
@@ -36,10 +38,16 @@
 		children
 	}: Props = $props();
 
+	const closeLabel = $derived(UI_TEXTS[$settings.locale].panels.closePanel);
+
 	function handleCollapse() {
 		if (collapsible && onCollapse) {
 			onCollapse();
 		}
+	}
+
+	function handleClose() {
+		settings.disablePanel(id);
 	}
 </script>
 
@@ -71,6 +79,15 @@
 					{collapsed ? '▼' : '▲'}
 				</button>
 			{/if}
+			<button
+				type="button"
+				class="panel-close-btn"
+				aria-label={closeLabel}
+				title={closeLabel}
+				onclick={handleClose}
+			>
+				×
+			</button>
 		</div>
 	</div>
 
@@ -193,6 +210,23 @@
 
 	.panel-collapse-btn:hover {
 		color: var(--text-primary);
+	}
+
+	.panel-close-btn {
+		background: none;
+		border: none;
+		color: var(--text-muted);
+		cursor: pointer;
+		padding: 0.15rem 0.35rem;
+		font-size: 1rem;
+		line-height: 1;
+		border-radius: 3px;
+		transition: color 0.15s ease, background 0.15s ease;
+	}
+
+	.panel-close-btn:hover {
+		color: var(--red);
+		background: rgba(255, 68, 68, 0.1);
 	}
 
 	.panel-content {

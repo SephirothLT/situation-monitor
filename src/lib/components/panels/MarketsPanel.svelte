@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { Panel, MarketItem } from '$lib/components/common';
-	import { indices } from '$lib/stores';
+	import { indices, settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 
 	const items = $derived($indices.items);
 	const loading = $derived($indices.loading);
 	const error = $derived($indices.error);
 	const count = $derived(items.length);
+	const title = $derived(getPanelName('markets', $settings.locale));
 </script>
 
-<Panel id="markets" title="Markets" {count} {loading} {error}>
+<Panel id="markets" {title} {count} {loading} {error}>
 	{#if items.length === 0 && !loading && !error}
 		<div class="empty-state">No market data available</div>
 	{:else}

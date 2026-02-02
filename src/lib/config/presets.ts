@@ -15,16 +15,16 @@ export interface Preset {
 export const PRESETS: Record<string, Preset> = {
 	'news-junkie': {
 		id: 'news-junkie',
-		name: 'News Junkie',
+		name: '资讯优先',
 		icon: '📰',
-		description: 'Stay on top of breaking news across politics, tech, and finance',
+		description: '政治、科技、财经要闻与主角分析',
 		panels: ['politics', 'tech', 'finance', 'gov', 'ai', 'mainchar', 'map']
 	},
 	trader: {
 		id: 'trader',
-		name: 'Trader',
+		name: '交易员',
 		icon: '📈',
-		description: 'Market-focused dashboard with stocks, crypto, and commodities',
+		description: '股票、加密货币、大宗与预测市场',
 		panels: [
 			'markets',
 			'heatmap',
@@ -32,6 +32,7 @@ export const PRESETS: Record<string, Preset> = {
 			'crypto',
 			'polymarket',
 			'whales',
+			'blockbeats',
 			'printer',
 			'finance',
 			'map'
@@ -39,9 +40,9 @@ export const PRESETS: Record<string, Preset> = {
 	},
 	geopolitics: {
 		id: 'geopolitics',
-		name: 'Geopolitics Watcher',
+		name: '地缘观察',
 		icon: '🌍',
-		description: 'Global situation awareness and regional hotspots',
+		description: '全球态势与区域热点',
 		panels: [
 			'map',
 			'intel',
@@ -57,23 +58,23 @@ export const PRESETS: Record<string, Preset> = {
 	},
 	intel: {
 		id: 'intel',
-		name: 'Intelligence Analyst',
+		name: '情报分析',
 		icon: '🔍',
-		description: 'Deep analysis, pattern detection, and narrative tracking',
+		description: '深度分析、模式与叙事追踪',
 		panels: ['map', 'intel', 'leaders', 'correlation', 'narrative', 'mainchar', 'politics']
 	},
 	minimal: {
 		id: 'minimal',
-		name: 'Minimal',
+		name: '极简',
 		icon: '⚡',
-		description: 'Just the essentials - map, news, and markets',
+		description: '仅保留地图、新闻与市场',
 		panels: ['map', 'politics', 'markets']
 	},
 	everything: {
 		id: 'everything',
-		name: 'Everything',
+		name: '全部',
 		icon: '🎛️',
-		description: 'Kitchen sink - all panels enabled',
+		description: '启用所有面板',
 		panels: [
 			'map',
 			'politics',
@@ -98,7 +99,9 @@ export const PRESETS: Record<string, Preset> = {
 			'leaders',
 			'intel',
 			'correlation',
-			'narrative'
+			'narrative',
+			'fed',
+			'blockbeats'
 		]
 	}
 };

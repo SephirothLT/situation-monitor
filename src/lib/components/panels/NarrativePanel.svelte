@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Panel, Badge } from '$lib/components/common';
+	import { settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 	import { analyzeNarratives } from '$lib/analysis/narrative';
 	import type { NewsItem } from '$lib/types';
 
@@ -12,6 +14,7 @@
 	let { news = [], loading = false, error = null }: Props = $props();
 
 	const analysis = $derived(analyzeNarratives(news));
+	const title = $derived(getPanelName('narrative', $settings.locale));
 
 	function getStatusVariant(status: string): 'default' | 'warning' | 'danger' | 'success' | 'info' {
 		switch (status) {
@@ -42,7 +45,7 @@
 	}
 </script>
 
-<Panel id="narrative" title="Narrative Tracker" {loading} {error}>
+<Panel id="narrative" {title} {loading} {error}>
 	{#if news.length === 0 && !loading && !error}
 		<div class="empty-state">Insufficient data for narrative analysis</div>
 	{:else if analysis}

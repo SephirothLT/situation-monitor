@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { PRESETS, PRESET_ORDER } from '$lib/config';
+	import { PRESETS, PRESET_ORDER, UI_TEXTS, getPresetText } from '$lib/config';
+	import { settings } from '$lib/stores';
 
 	interface Props {
 		open: boolean;
@@ -9,12 +10,13 @@
 
 	let { open, onSelectPreset, onSkip }: Props = $props();
 
+	const t = $derived(UI_TEXTS[$settings.locale].onboarding);
+
 	function handleSelectPreset(presetId: string) {
 		onSelectPreset(presetId);
 	}
 
 	function handleSkip() {
-		// Select the 'everything' preset (show all panels) when skipping
 		onSelectPreset('everything');
 	}
 
@@ -31,27 +33,28 @@
 	<div class="modal-overlay">
 		<div class="modal onboarding-modal">
 			<div class="modal-header">
-				<button class="close-btn" onclick={handleClose} aria-label="Skip onboarding">
+				<button class="close-btn" onclick={handleClose} aria-label={t.skip}>
 					&times;
 				</button>
-				<h2>Welcome to Situation Monitor</h2>
-				<p class="subtitle">Choose a dashboard configuration to get started</p>
+				<h2>{t.welcome}</h2>
+				<p class="subtitle">{t.subtitle}</p>
 			</div>
 
 			<div class="preset-grid">
 				{#each PRESET_ORDER as presetId}
 					{@const preset = PRESETS[presetId]}
+					{@const text = getPresetText(presetId, $settings.locale)}
 					<button class="preset-card" onclick={() => handleSelectPreset(presetId)}>
 						<div class="preset-icon">{preset.icon}</div>
-						<div class="preset-name">{preset.name}</div>
-						<div class="preset-description">{preset.description}</div>
-						<div class="preset-panel-count">{preset.panels.length} panels</div>
+						<div class="preset-name">{text.name}</div>
+						<div class="preset-description">{text.description}</div>
+						<div class="preset-panel-count">{preset.panels.length}{t.panelsCount}</div>
 					</button>
 				{/each}
 			</div>
 
 			<div class="modal-footer">
-				<p class="hint">You can change this later in Settings</p>
+				<p class="hint">{t.hint}</p>
 			</div>
 		</div>
 	</div>

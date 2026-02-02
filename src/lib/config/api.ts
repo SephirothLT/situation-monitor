@@ -27,6 +27,42 @@ export const FRED_API_KEY = browser
 export const FRED_BASE_URL = 'https://api.stlouisfed.org/fred';
 
 /**
+ * Intellizence API key (optional) for real-time layoffs data
+ * Get key at: https://www.intellizence.com/ (Dataset API / Layoffs)
+ * When set, layoffs panel uses recent/real-time data instead of historical CSV
+ */
+export const INTELLIZENCE_API_KEY = browser
+	? (import.meta.env?.VITE_INTELLIZENCE_API_KEY ?? '')
+	: (process.env.VITE_INTELLIZENCE_API_KEY ?? '');
+
+export const INTELLIZENCE_LAYOFF_URL = 'https://api.intellizence.com/api/v2/dataset/layoff';
+
+/**
+ * Airtable API key (optional) for layoffs.fyi Tech Layoffs table
+ * When set, layoffs panel fetches directly from the same Airtable base that powers https://layoffs.fyi/ (Tech Layoffs tab).
+ * You need a read-only key for base app1PaujS9zxVGUZ4 (request from layoffs.fyi / Roger Lee if they offer it).
+ */
+export const AIRTABLE_LAYOFFS_API_KEY = browser
+	? (import.meta.env?.VITE_AIRTABLE_LAYOFFS_API_KEY ?? '')
+	: (process.env.VITE_AIRTABLE_LAYOFFS_API_KEY ?? '');
+
+/** layoffs.fyi Tech Layoffs table: base and table IDs from their public embed */
+export const AIRTABLE_LAYOFFS_BASE_ID = 'app1PaujS9zxVGUZ4';
+export const AIRTABLE_LAYOFFS_TABLE_ID = 'tbl8c8kanuNB6bPYr';
+export const AIRTABLE_API_URL = 'https://api.airtable.com/v0';
+
+/**
+ * Etherscan API key (optional) for whale panel – ETH address transactions and balance
+ * Get free key at: https://etherscan.io/apis
+ * When set, whale panel uses real chain data for 0x… addresses; otherwise mock data
+ */
+export const ETHERSCAN_API_KEY = browser
+	? (import.meta.env?.VITE_ETHERSCAN_API_KEY ?? '')
+	: (process.env.VITE_ETHERSCAN_API_KEY ?? '');
+
+export const ETHERSCAN_API_BASE = 'https://api.etherscan.io/v2/api';
+
+/**
  * Check if we're in development mode
  * Uses import.meta.env which is available in both browser and test environments
  */

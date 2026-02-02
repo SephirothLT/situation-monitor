@@ -4,6 +4,8 @@
 
 	interface Props {
 		item: MarketItemType;
+		/** Override display name (e.g. localized commodity name) */
+		displayName?: string;
 		showSymbol?: boolean;
 		showPrice?: boolean;
 		compact?: boolean;
@@ -12,12 +14,14 @@
 
 	let {
 		item,
+		displayName,
 		showSymbol = true,
 		showPrice = true,
 		compact = false,
 		currencySymbol = '$'
 	}: Props = $props();
 
+	const nameToShow = $derived(displayName ?? item.name);
 	const isDataAvailable = $derived(!isNaN(item.price) && item.price !== null);
 	const changeClass = $derived(isDataAvailable ? getChangeClass(item.changePercent) : '');
 	const priceDisplay = $derived(
@@ -32,7 +36,7 @@
 
 <div class="market-item" class:compact>
 	<div class="market-info">
-		<div class="market-name">{item.name}</div>
+		<div class="market-name">{nameToShow}</div>
 		{#if showSymbol}
 			<div class="market-symbol">{item.symbol}</div>
 		{/if}

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
+	import { settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 	import type { WorldLeader } from '$lib/types';
 
 	interface Props {
@@ -11,6 +13,7 @@
 	let { leaders = [], loading = false, error = null }: Props = $props();
 
 	const count = $derived(leaders.length);
+	const title = $derived(getPanelName('leaders', $settings.locale));
 
 	function getActivityClass(newsCount: number): string {
 		if (newsCount >= 3) return 'high-activity';
@@ -19,7 +22,7 @@
 	}
 </script>
 
-<Panel id="leaders" title="World Leaders" {count} {loading} {error}>
+<Panel id="leaders" {title} {count} {loading} {error}>
 	{#if leaders.length === 0 && !loading && !error}
 		<div class="empty-state">No leaders data available</div>
 	{:else}

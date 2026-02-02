@@ -31,10 +31,13 @@ export {
 export {
 	SECTORS,
 	COMMODITIES,
+	COMMODITY_OPTIONS,
 	INDICES,
 	CRYPTO,
+	CRYPTO_OPTIONS,
 	type SectorConfig,
-	type CommodityConfig
+	type CommodityConfig,
+	type CryptoOption
 } from './markets';
 
 // Analysis configuration
@@ -84,3 +87,14 @@ export { CORS_PROXY_URL, API_DELAYS, CACHE_TTLS, DEBUG, logger, FINNHUB_API_KEY,
 
 // World leaders configuration
 export { WORLD_LEADERS } from './leaders';
+
+// Locale / i18n
+export {
+	UI_TEXTS,
+	getPanelName,
+	getPresetText,
+	getSituationConfig,
+	getMapPlaceName,
+	type Locale,
+	type MapPlaceType
+} from './locale';

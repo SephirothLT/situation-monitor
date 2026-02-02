@@ -5,12 +5,13 @@
 		open: boolean;
 		title: string;
 		onClose: () => void;
+		closeLabel?: string;
 		header?: Snippet;
 		footer?: Snippet;
 		children: Snippet;
 	}
 
-	let { open = false, title, onClose, header, footer, children }: Props = $props();
+	let { open = false, title, onClose, closeLabel = 'Close', header, footer, children }: Props = $props();
 
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
@@ -37,7 +38,7 @@
 				{#if header}
 					{@render header()}
 				{/if}
-				<button class="modal-close" onclick={onClose} aria-label="Close">×</button>
+				<button class="modal-close" onclick={onClose} aria-label={closeLabel}>×</button>
 			</div>
 
 			<div class="modal-content">

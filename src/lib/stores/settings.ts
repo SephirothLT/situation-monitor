@@ -1,5 +1,5 @@
 /**
- * Settings store - panel visibility, order, and sizes
+ * Settings store - panel visibility, order, sizes, and locale
  */
 
 import { writable, derived, get } from 'svelte/store';
@@ -10,15 +10,20 @@ import {
 	PRESETS,
 	ONBOARDING_STORAGE_KEY,
 	PRESET_STORAGE_KEY,
-	type PanelId
+	type PanelId,
+	type Locale
 } from '$lib/config';
 
 // Storage keys
 const STORAGE_KEYS = {
 	panels: 'situationMonitorPanels',
 	order: 'panelOrder',
-	sizes: 'panelSizes'
+	sizes: 'panelSizes',
+	locale: 'situationMonitorLocale',
+	theme: 'situationMonitorTheme'
 } as const;
+
+export type Theme = 'dark' | 'light';
 
 // Types
 export interface PanelSettings {
@@ -28,6 +33,8 @@ export interface PanelSettings {
 }
 
 export interface SettingsState extends PanelSettings {
+	locale: Locale;
+	theme: Theme;
 	initialized: boolean;
 }
 
@@ -43,18 +50,22 @@ function getDefaultSettings(): PanelSettings {
 }
 
 // Load from localStorage
-function loadFromStorage(): Partial<PanelSettings> {
+function loadFromStorage(): Partial<PanelSettings> & { locale?: Locale; theme?: Theme } {
 	if (!browser) return {};
 
 	try {
 		const panels = localStorage.getItem(STORAGE_KEYS.panels);
 		const order = localStorage.getItem(STORAGE_KEYS.order);
 		const sizes = localStorage.getItem(STORAGE_KEYS.sizes);
+		const locale = localStorage.getItem(STORAGE_KEYS.locale) as Locale | null;
+		const theme = localStorage.getItem(STORAGE_KEYS.theme) as Theme | null;
 
 		return {
 			enabled: panels ? JSON.parse(panels) : undefined,
 			order: order ? JSON.parse(order) : undefined,
-			sizes: sizes ? JSON.parse(sizes) : undefined
+			sizes: sizes ? JSON.parse(sizes) : undefined,
+			locale: locale === 'zh' || locale === 'en' ? locale : undefined,
+			theme: theme === 'dark' || theme === 'light' ? theme : undefined
 		};
 	} catch (e) {
 		console.warn('Failed to load settings from localStorage:', e);
@@ -82,6 +93,8 @@ function createSettingsStore() {
 		enabled: { ...defaults.enabled, ...saved.enabled },
 		order: saved.order ?? defaults.order,
 		sizes: { ...defaults.sizes, ...saved.sizes },
+		locale: saved.locale ?? 'zh',
+		theme: saved.theme ?? 'dark',
 		initialized: false
 	};
 
@@ -94,7 +107,10 @@ function createSettingsStore() {
 		 * Initialize store (call after hydration)
 		 */
 		init() {
-			update((state) => ({ ...state, initialized: true }));
+			update((state) => {
+				if (browser) document.documentElement.setAttribute('data-theme', state.theme);
+				return { ...state, initialized: true };
+			});
 		},
 
 		/**
@@ -186,16 +202,40 @@ function createSettingsStore() {
 		},
 
 		/**
-		 * Reset all settings to defaults
+		 * Set UI language (zh / en)
+		 */
+		setLocale(locale: Locale) {
+			update((state) => {
+				if (browser) localStorage.setItem(STORAGE_KEYS.locale, locale);
+				return { ...state, locale };
+			});
+		},
+
+		/**
+		 * Set background theme (dark / light)
+		 */
+		setTheme(theme: Theme) {
+			update((state) => {
+				if (browser) {
+					localStorage.setItem(STORAGE_KEYS.theme, theme);
+					document.documentElement.setAttribute('data-theme', theme);
+				}
+				return { ...state, theme };
+			});
+		},
+
+		/**
+		 * Reset all settings to defaults (keeps current locale and theme)
 		 */
 		reset() {
+			const state = get({ subscribe });
 			const defaults = getDefaultSettings();
 			if (browser) {
 				localStorage.removeItem(STORAGE_KEYS.panels);
 				localStorage.removeItem(STORAGE_KEYS.order);
 				localStorage.removeItem(STORAGE_KEYS.sizes);
 			}
-			set({ ...defaults, initialized: true });
+			set({ ...defaults, locale: state.locale, theme: state.theme, initialized: true });
 		},
 
 		/**

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
+	import { settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 
 	interface Prediction {
 		id: string;
@@ -18,17 +20,23 @@
 	let { predictions = [], loading = false, error = null }: Props = $props();
 
 	const count = $derived(predictions.length);
+	const title = $derived(getPanelName('polymarket', $settings.locale));
 
 	function formatVolume(v: number | string): string {
-		if (typeof v === 'string') return '$' + v;
-		if (!v) return '$0';
+		if (typeof v === 'string') {
+			if (v === '—' || !v) return v || '—';
+			const n = parseFloat(v);
+			if (Number.isNaN(n) || n <= 0) return '—';
+			return '$' + v;
+		}
+		if (v == null || v <= 0) return '—';
 		if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
 		if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
 		return '$' + v.toFixed(0);
 	}
 </script>
 
-<Panel id="polymarket" title="Polymarket" {count} {loading} {error}>
+<Panel id="polymarket" {title} {count} {loading} {error}>
 	{#if predictions.length === 0 && !loading && !error}
 		<div class="empty-state">No predictions available</div>
 	{:else}
@@ -36,7 +44,15 @@
 			{#each predictions as pred (pred.id)}
 				<div class="prediction-item">
 					<div class="prediction-info">
-						<div class="prediction-question">{pred.question}</div>
+						<div class="prediction-question">
+							{#if pred.url}
+								<a href={pred.url} target="_blank" rel="noopener noreferrer" class="prediction-link"
+									>{pred.question}</a
+								>
+							{:else}
+								{pred.question}
+							{/if}
+						</div>
 						<div class="prediction-volume">Vol: {formatVolume(pred.volume)}</div>
 					</div>
 					<div class="prediction-odds">
@@ -76,6 +92,16 @@
 		color: var(--text-primary);
 		line-height: 1.3;
 		margin-bottom: 0.2rem;
+	}
+
+	.prediction-link {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.prediction-link:hover {
+		text-decoration: underline;
+		color: var(--accent);
 	}
 
 	.prediction-volume {

@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
+	import { settings } from '$lib/stores';
+	import { getPanelName } from '$lib/config';
 
 	interface Contract {
 		agency: string;
 		description: string;
 		vendor: string;
 		amount: number;
+		url?: string;
 	}
 
 	interface Props {
@@ -17,6 +20,7 @@
 	let { contracts = [], loading = false, error = null }: Props = $props();
 
 	const count = $derived(contracts.length);
+	const title = $derived(getPanelName('contracts', $settings.locale));
 
 	function formatValue(v: number): string {
 		if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
@@ -26,24 +30,39 @@
 	}
 </script>
 
-<Panel id="contracts" title="Gov Contracts" {count} {loading} {error}>
+<Panel id="contracts" {title} {count} {loading} {error}>
 	{#if contracts.length === 0 && !loading && !error}
 		<div class="empty-state">No contracts available</div>
 	{:else}
 		<div class="contracts-list">
-			{#each contracts as contract, i (contract.vendor + i)}
-				<div class="contract-item">
-					<div class="contract-agency">{contract.agency}</div>
-					<div class="contract-desc">
-						{contract.description.length > 100
-							? contract.description.substring(0, 100) + '...'
-							: contract.description}
+			{#each contracts as contract, i (contract.vendor + (contract.url ?? '') + i)}
+				{#if contract.url}
+					<a href={contract.url} target="_blank" rel="noopener noreferrer" class="contract-item contract-link">
+						<div class="contract-agency">{contract.agency}</div>
+						<div class="contract-desc">
+							{contract.description.length > 100
+								? contract.description.substring(0, 100) + '...'
+								: contract.description}
+						</div>
+						<div class="contract-meta">
+							<span class="contract-vendor">{contract.vendor}</span>
+							<span class="contract-value">{formatValue(contract.amount)}</span>
+						</div>
+					</a>
+				{:else}
+					<div class="contract-item">
+						<div class="contract-agency">{contract.agency}</div>
+						<div class="contract-desc">
+							{contract.description.length > 100
+								? contract.description.substring(0, 100) + '...'
+								: contract.description}
+						</div>
+						<div class="contract-meta">
+							<span class="contract-vendor">{contract.vendor}</span>
+							<span class="contract-value">{formatValue(contract.amount)}</span>
+						</div>
 					</div>
-					<div class="contract-meta">
-						<span class="contract-vendor">{contract.vendor}</span>
-						<span class="contract-value">{formatValue(contract.amount)}</span>
-					</div>
-				</div>
+				{/if}
 			{/each}
 		</div>
 	{/if}
@@ -58,6 +77,20 @@
 	.contract-item {
 		padding: 0.5rem 0;
 		border-bottom: 1px solid var(--border);
+	}
+
+	.contract-link {
+		display: block;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.contract-link:hover {
+		background: var(--bg-hover, rgba(255, 255, 255, 0.04));
+		border-radius: 4px;
+		margin: 0 -0.25rem;
+		padding-left: 0.25rem;
+		padding-right: 0.25rem;
 	}
 
 	.contract-item:last-child {

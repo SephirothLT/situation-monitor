@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { Panel } from '$lib/components/common';
+	import { settings } from '$lib/stores';
+	import { UI_TEXTS, getMapPlaceName } from '$lib/config';
 	import {
 		HOTSPOTS,
 		CONFLICT_ZONES,
@@ -15,6 +18,9 @@
 	} from '$lib/config/map';
 	import { CACHE_TTLS } from '$lib/config/api';
 	import type { CustomMonitor } from '$lib/types';
+
+	const mapT = $derived(UI_TEXTS[$settings.locale].map);
+	const mapTitle = $derived(UI_TEXTS[$settings.locale].panels.globalSituation);
 
 	interface Props {
 		monitors?: CustomMonitor[];
@@ -211,6 +217,7 @@
 
 	// Initialize map
 	async function initMap(): Promise<void> {
+		const locale = get(settings).locale;
 		const d3 = await import('d3');
 		d3Module = d3;
 		const topojson = await import('topojson-client');
@@ -223,20 +230,19 @@
 
 		mapGroup = svg.append('g').attr('id', 'mapGroup');
 
-		// Setup zoom - disable scroll wheel, allow touch pinch and buttons
+		// Setup zoom: scroll wheel + touch pinch + drag pan + button controls; double-click zoom disabled
 		zoom = d3
 			.zoom<SVGSVGElement, unknown>()
 			.scaleExtent([1, 6])
 			.filter((event) => {
-				// Block scroll wheel zoom (wheel events)
-				if (event.type === 'wheel') return false;
+				// Allow scroll wheel zoom (wheel up = zoom in, wheel down = zoom out)
+				if (event.type === 'wheel') return true;
 				// Allow touch events (pinch zoom on mobile)
 				if (event.type.startsWith('touch')) return true;
 				// Allow mouse drag for panning
 				if (event.type === 'mousedown' || event.type === 'mousemove') return true;
-				// Block double-click zoom
+				// Block double-click zoom to avoid accidental zoom when clicking
 				if (event.type === 'dblclick') return false;
-				// Allow other events (programmatic zoom from buttons)
 				return true;
 			})
 			.on('zoom', (event) => {
@@ -293,12 +299,15 @@
 				.attr('stroke-width', 0.3)
 				.attr('stroke-dasharray', '2,2');
 
-			// Draw ocean labels
+			// Draw ocean labels (in mapGroup so they stay next to map when zooming)
 			OCEANS.forEach((o) => {
 				const [x, y] = projection([o.lon, o.lat]) || [0, 0];
 				if (x && y) {
 					mapGroup
 						.append('text')
+						.attr('class', 'map-label')
+						.attr('data-place-type', 'oceans')
+						.attr('data-place-key', o.name)
 						.attr('x', x)
 						.attr('y', y)
 						.attr('fill', '#1a4a40')
@@ -306,7 +315,7 @@
 						.attr('font-family', 'monospace')
 						.attr('text-anchor', 'middle')
 						.attr('opacity', 0.6)
-						.text(o.name);
+						.text(getMapPlaceName(locale, 'oceans', o.name));
 				}
 			});
 
@@ -347,12 +356,15 @@
 						.attr('transform', `rotate(45,${x},${y})`);
 					mapGroup
 						.append('text')
+						.attr('class', 'map-label')
+						.attr('data-place-type', 'chokepoints')
+						.attr('data-place-key', cp.name)
 						.attr('x', x + 8)
 						.attr('y', y + 3)
 						.attr('fill', '#00aaff')
 						.attr('font-size', '7px')
 						.attr('font-family', 'monospace')
-						.text(cp.name);
+						.text(getMapPlaceName(locale, 'chokepoints', cp.name));
 					mapGroup
 						.append('circle')
 						.attr('cx', x)
@@ -458,15 +470,18 @@
 						.attr('class', 'pulse');
 					// Inner dot
 					mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 3).attr('fill', color);
-					// Label
+					// Label (in mapGroup so it stays next to the hotspot dot when zooming)
 					mapGroup
 						.append('text')
+						.attr('class', 'map-label')
+						.attr('data-place-type', 'hotspots')
+						.attr('data-place-key', h.name)
 						.attr('x', x + 8)
 						.attr('y', y + 3)
 						.attr('fill', color)
 						.attr('font-size', '8px')
 						.attr('font-family', 'monospace')
-						.text(h.name);
+						.text(getMapPlaceName(locale, 'hotspots', h.name));
 					// Hit area
 					mapGroup
 						.append('circle')
@@ -570,12 +585,32 @@
 		}
 	});
 
+	// Update map place labels when locale changes
+	$effect(() => {
+		const locale = $settings.locale;
+		if (!mapGroup) return;
+		const types: Array<'oceans' | 'chokepoints' | 'hotspots'> = ['oceans', 'chokepoints', 'hotspots'];
+		for (const type of types) {
+			mapGroup.selectAll(`text[data-place-type="${type}"]`).each(function (this: SVGTextElement) {
+				const el = this;
+				const key = el.getAttribute('data-place-key');
+				if (key) el.textContent = getMapPlaceName(locale, type, key);
+			});
+		}
+	});
+
 	onMount(() => {
 		initMap();
+		// Prevent page/panel scroll when wheeling over the map so D3 zoom receives the event
+		if (mapContainer) {
+			const onWheel = (e: WheelEvent) => e.preventDefault();
+			mapContainer.addEventListener('wheel', onWheel, { passive: false });
+			return () => mapContainer.removeEventListener('wheel', onWheel);
+		}
 	});
 </script>
 
-<Panel id="map" title="Global Situation" {loading} {error}>
+<Panel id="map" title={mapTitle} {loading} {error}>
 	<div class="map-container" bind:this={mapContainer}>
 		<svg class="map-svg"></svg>
 		{#if tooltipVisible && tooltipContent}
@@ -590,9 +625,9 @@
 			</div>
 		{/if}
 		<div class="zoom-controls">
-			<button class="zoom-btn" onclick={zoomIn} title="Zoom in">+</button>
-			<button class="zoom-btn" onclick={zoomOut} title="Zoom out">−</button>
-			<button class="zoom-btn" onclick={resetZoom} title="Reset">⟲</button>
+			<button class="zoom-btn" onclick={zoomIn} title={mapT.zoomIn}>+</button>
+			<button class="zoom-btn" onclick={zoomOut} title={mapT.zoomOut}>−</button>
+			<button class="zoom-btn" onclick={resetZoom} title={mapT.reset}>⟲</button>
 		</div>
 		<div class="map-legend">
 			<div class="legend-item">

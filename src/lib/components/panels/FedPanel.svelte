@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Panel, Badge } from '$lib/components/common';
 	import { getRelativeTime } from '$lib/utils';
-	import { fedNews, fedIndicators, fedVideos } from '$lib/stores';
+	import { fedNews, fedIndicators, fedVideos, settings } from '$lib/stores';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 	import { isFredConfigured } from '$lib/api/fred';
 	import type { EconomicIndicator } from '$lib/api/fred';
 
@@ -55,9 +56,12 @@
 	function getTypeVariant(type: string): BadgeVariant {
 		return TYPE_VARIANTS[type] || 'default';
 	}
+
+	const title = $derived(getPanelName('fed', $settings.locale));
+	const t = $derived(UI_TEXTS[$settings.locale].fed);
 </script>
 
-<Panel id="fed" title="Federal Reserve" count={newsState.items.length} {loading} {error}>
+<Panel id="fed" {title} count={newsState.items.length} {loading} {error}>
 	<!-- Economic Indicators -->
 	{#if hasApiKey && indicatorList.length > 0}
 		<div class="indicators-section">
@@ -75,7 +79,7 @@
 		</div>
 	{:else if !hasApiKey && !loading}
 		<div class="no-api-key">
-			<span class="no-api-key-text">Add VITE_FRED_API_KEY for economic indicators</span>
+			<span class="no-api-key-text">{t.noApiKey}</span>
 		</div>
 	{/if}
 

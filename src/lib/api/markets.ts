@@ -5,7 +5,7 @@
  * Free tier: 60 calls/minute
  */
 
-import { INDICES, SECTORS, COMMODITIES, CRYPTO } from '$lib/config/markets';
+import { INDICES, SECTORS, COMMODITIES, CRYPTO, type CryptoOption, type CommodityConfig } from '$lib/config/markets';
 import type { MarketItem, SectorPerformance, CryptoItem } from '$lib/types';
 import { fetchWithProxy, logger, FINNHUB_API_KEY, FINNHUB_BASE_URL } from '$lib/config/api';
 
@@ -63,12 +63,13 @@ const INDEX_ETF_MAP: Record<string, string> = {
 };
 
 /**
- * Fetch a quote from Finnhub
+ * Fetch a quote from Finnhub.
+ * Uses CORS proxy in browser so Finnhub responses are not blocked.
  */
 async function fetchFinnhubQuote(symbol: string): Promise<FinnhubQuote | null> {
 	try {
 		const url = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
-		const response = await fetch(url);
+		const response = await fetchWithProxy(url);
 
 		if (!response.ok) {
 			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -88,45 +89,71 @@ async function fetchFinnhubQuote(symbol: string): Promise<FinnhubQuote | null> {
 	}
 }
 
+const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
+
 /**
- * Fetch crypto prices from CoinGecko via proxy
+ * Fetch crypto prices from CoinGecko.
+ * Tries direct fetch first (CoinGecko allows CORS); falls back to proxy if needed.
+ * @param coins - List of { id, symbol, name } (CoinGecko id). If not provided, uses CRYPTO from config.
  */
-export async function fetchCryptoPrices(): Promise<CryptoItem[]> {
-	try {
-		const ids = CRYPTO.map((c) => c.id).join(',');
-		const coinGeckoUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+export async function fetchCryptoPrices(coins?: CryptoOption[]): Promise<CryptoItem[]> {
+	const list = coins && coins.length > 0 ? coins : CRYPTO;
+	const ids = list.map((c) => c.id).join(',');
+	const coinGeckoUrl = `${COINGECKO_BASE}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
 
-		logger.log('Markets API', 'Fetching crypto from CoinGecko');
-
-		const response = await fetchWithProxy(coinGeckoUrl);
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-		}
-
-		const data: CoinGeckoPricesResponse = await response.json();
-
-		return CRYPTO.map((crypto) => {
+	function mapResponse(data: CoinGeckoPricesResponse): CryptoItem[] {
+		return list.map((crypto) => {
 			const priceData = data[crypto.id];
+			const usd = priceData?.usd;
+			const change = priceData?.usd_24h_change;
 			return {
 				id: crypto.id,
 				symbol: crypto.symbol,
 				name: crypto.name,
-				current_price: priceData?.usd || 0,
-				price_change_24h: priceData?.usd_24h_change || 0,
-				price_change_percentage_24h: priceData?.usd_24h_change || 0
+				current_price: typeof usd === 'number' ? usd : 0,
+				price_change_24h: typeof change === 'number' ? change : 0,
+				price_change_percentage_24h: typeof change === 'number' ? change : 0
 			};
 		});
+	}
+
+	// 1. Try direct fetch (CoinGecko allows CORS for simple/price)
+	try {
+		logger.log('Markets API', 'Fetching crypto from CoinGecko (direct)');
+		const direct = await fetch(coinGeckoUrl);
+		if (direct.ok) {
+			const data = (await direct.json()) as CoinGeckoPricesResponse;
+			if (data && typeof data === 'object' && (data.bitcoin || data.ethereum || Object.keys(data).length > 0)) {
+				return mapResponse(data);
+			}
+		}
+	} catch (e) {
+		logger.warn('Markets API', 'CoinGecko direct fetch failed, trying proxy:', e);
+	}
+
+	// 2. Fallback: proxy
+	try {
+		logger.log('Markets API', 'Fetching crypto from CoinGecko (proxy)');
+		const response = await fetchWithProxy(coinGeckoUrl);
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+		const data = (await response.json()) as CoinGeckoPricesResponse;
+		if (data && typeof data === 'object') {
+			return mapResponse(data);
+		}
 	} catch (error) {
 		logger.error('Markets API', 'Error fetching crypto:', error);
-		return CRYPTO.map((c) => ({
-			id: c.id,
-			symbol: c.symbol,
-			name: c.name,
-			current_price: 0,
-			price_change_24h: 0,
-			price_change_percentage_24h: 0
-		}));
 	}
+
+	return list.map((c) => ({
+		id: c.id,
+		symbol: c.symbol,
+		name: c.name,
+		current_price: 0,
+		price_change_24h: 0,
+		price_change_percentage_24h: 0
+	}));
 }
 
 /**
@@ -208,15 +235,22 @@ const COMMODITY_SYMBOL_MAP: Record<string, string> = {
 	'CL=F': 'USO', // Crude Oil -> United States Oil Fund
 	'NG=F': 'UNG', // Natural Gas -> United States Natural Gas Fund
 	'SI=F': 'SLV', // Silver -> iShares Silver Trust
-	'HG=F': 'CPER' // Copper -> United States Copper Index Fund
+	'HG=F': 'CPER', // Copper -> United States Copper Index Fund
+	'PL=F': 'PPLT', // Platinum -> Aberdeen Physical Platinum
+	'PA=F': 'PALL', // Palladium -> Aberdeen Physical Palladium
+	'ZW=F': 'WEAT', // Wheat -> Teucrium Wheat
+	'ZC=F': 'CORN', // Corn -> Teucrium Corn
+	'SB=F': 'CANE' // Sugar -> Teucrium Sugar
 };
 
 /**
- * Fetch commodities from Finnhub
+ * Fetch commodities from Finnhub.
+ * @param commodityConfigs - List to fetch (from commodityList.getSelectedConfig()). If omitted, uses COMMODITIES default.
  */
-export async function fetchCommodities(): Promise<MarketItem[]> {
+export async function fetchCommodities(commodityConfigs?: CommodityConfig[]): Promise<MarketItem[]> {
+	const list = commodityConfigs && commodityConfigs.length > 0 ? commodityConfigs : COMMODITIES;
 	const createEmptyCommodities = () =>
-		COMMODITIES.map((c) => createEmptyMarketItem(c.symbol, c.name, 'commodity'));
+		list.map((c) => createEmptyMarketItem(c.symbol, c.name, 'commodity'));
 
 	if (!hasFinnhubApiKey()) {
 		logger.warn('Markets API', 'Finnhub API key not configured');
@@ -226,22 +260,30 @@ export async function fetchCommodities(): Promise<MarketItem[]> {
 	try {
 		logger.log('Markets API', 'Fetching commodities from Finnhub');
 
-		const quotes = await Promise.all(
-			COMMODITIES.map(async (commodity) => {
+		const results = await Promise.allSettled(
+			list.map(async (commodity) => {
 				const finnhubSymbol = COMMODITY_SYMBOL_MAP[commodity.symbol] || commodity.symbol;
 				const quote = await fetchFinnhubQuote(finnhubSymbol);
 				return { commodity, quote };
 			})
 		);
 
-		return quotes.map(({ commodity, quote }) => ({
-			symbol: commodity.symbol,
-			name: commodity.name,
-			price: quote?.c ?? NaN,
-			change: quote?.d ?? NaN,
-			changePercent: quote?.dp ?? NaN,
-			type: 'commodity' as const
-		}));
+		return results.map((result, i) => {
+			const commodity = list[i];
+			if (result.status === 'rejected') {
+				logger.warn('Markets API', `Commodity ${commodity.symbol} failed:`, result.reason);
+				return createEmptyMarketItem(commodity.symbol, commodity.name, 'commodity');
+			}
+			const { quote } = result.value;
+			return {
+				symbol: commodity.symbol,
+				name: commodity.name,
+				price: quote?.c ?? NaN,
+				change: quote?.d ?? NaN,
+				changePercent: quote?.dp ?? NaN,
+				type: 'commodity' as const
+			};
+		});
 	} catch (error) {
 		logger.error('Markets API', 'Error fetching commodities:', error);
 		return createEmptyCommodities();
@@ -256,14 +298,19 @@ interface AllMarketsData {
 }
 
 /**
- * Fetch all market data
+ * Fetch all market data.
+ * @param cryptoCoins - Optional list of coins for crypto panel (from cryptoList.getSelectedConfig()). If omitted, uses config default.
+ * @param commodityConfigs - Optional list of commodities (from commodityList.getSelectedConfig()). If omitted, uses config default.
  */
-export async function fetchAllMarkets(): Promise<AllMarketsData> {
+export async function fetchAllMarkets(
+	cryptoCoins?: CryptoOption[],
+	commodityConfigs?: CommodityConfig[]
+): Promise<AllMarketsData> {
 	const [crypto, indices, sectors, commodities] = await Promise.all([
-		fetchCryptoPrices(),
+		fetchCryptoPrices(cryptoCoins),
 		fetchIndices(),
 		fetchSectorPerformance(),
-		fetchCommodities()
+		fetchCommodities(commodityConfigs)
 	]);
 
 	return { crypto, indices, sectors, commodities };
