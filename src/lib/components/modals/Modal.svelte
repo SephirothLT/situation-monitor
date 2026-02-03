@@ -58,29 +58,32 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="modal-backdrop" onclick={handleBackdropClick}>
-		<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-			<div class="modal-header">
-				<h2 id="modal-title" class="modal-title">{title}</h2>
-				{#if header}
-					{@render header()}
-				{/if}
-				<button
-					class="modal-close"
-					bind:this={closeButtonRef}
-					onclick={onClose}
-					aria-label={closeLabel}>×</button
-				>
-			</div>
-
-			<div class="modal-content">
-				{@render children()}
-			</div>
-
-			{#if footer}
-				<div class="modal-footer">
-					{@render footer()}
+		<div class="modal-container" onclick={(e) => e.stopPropagation()}>
+			<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+				<!-- Close button inside header so it is never covered by scrollable content -->
+				<div class="modal-header">
+					<h2 id="modal-title" class="modal-title">{title}</h2>
+					{#if header}
+						{@render header()}
+					{/if}
+					<button
+						type="button"
+						class="modal-close"
+						bind:this={closeButtonRef}
+						onclick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+						aria-label={closeLabel}>×</button>
 				</div>
-			{/if}
+
+				<div class="modal-content">
+					{@render children()}
+				</div>
+
+				{#if footer}
+					<div class="modal-footer">
+						{@render footer()}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 {/if}
@@ -103,12 +106,21 @@
 		}
 	}
 
+	.modal-container {
+		position: relative;
+		width: 100%;
+		max-width: 500px;
+		max-height: 90vh;
+		z-index: 1001;
+	}
+
 	.modal {
+		position: relative;
+		z-index: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: 8px;
 		width: 100%;
-		max-width: 500px;
 		max-height: 90vh;
 		display: flex;
 		flex-direction: column;
@@ -116,11 +128,15 @@
 	}
 
 	.modal-header {
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: 1rem;
+		padding-right: 2.5rem;
 		border-bottom: 1px solid var(--border);
+		flex-shrink: 0;
+		background: var(--surface);
 	}
 
 	.modal-title {
@@ -128,11 +144,19 @@
 		font-weight: 600;
 		margin: 0;
 		color: var(--text-primary);
+		flex: 1;
+		min-width: 0;
 	}
 
 	.modal-close {
-		background: none;
-		border: none;
+		position: absolute;
+		top: 50%;
+		right: 0.5rem;
+		transform: translateY(-50%);
+		z-index: 10;
+		flex-shrink: 0;
+		background: var(--surface);
+		border: 1px solid var(--border);
 		color: var(--text-secondary);
 		font-size: 1.5rem;
 		cursor: pointer;
@@ -140,10 +164,13 @@
 		line-height: 1;
 		width: 2rem;
 		height: 2rem;
+		min-width: 2rem;
+		min-height: 2rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		border-radius: 4px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 	}
 
 	.modal-close:hover {

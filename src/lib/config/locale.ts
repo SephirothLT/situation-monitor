@@ -314,8 +314,26 @@ export const UI_TEXTS: Record<
 			remove: string;
 			maxReached: string;
 			searchPlaceholder: string;
+			searchStockPlaceholder: string;
 			noMatch: string;
 			allAdded: string;
+			presetLabel: string;
+			searchLabel: string;
+			searching: string;
+		};
+		/** Add index/stock to markets panel */
+		marketPicker: {
+			addMore: string;
+			modalTitle: string;
+			remove: string;
+			maxReached: string;
+			searchPlaceholder: string;
+			searchStockPlaceholder: string;
+			noMatch: string;
+			allAdded: string;
+			presetLabel: string;
+			searchLabel: string;
+			searching: string;
 		};
 	}
 > = {
@@ -534,8 +552,25 @@ export const UI_TEXTS: Record<
 			remove: '移除',
 			maxReached: '最多 15 个品种',
 			searchPlaceholder: '搜索名称或代号',
+			searchStockPlaceholder: '输入大宗名称或代码搜索…',
 			noMatch: '无匹配',
-			allAdded: '已全部添加'
+			allAdded: '已全部添加',
+			presetLabel: '常用大宗品种',
+			searchLabel: '搜索大宗',
+			searching: '搜索中…'
+		},
+		marketPicker: {
+			addMore: '添加更多',
+			modalTitle: '添加指数 / 股票',
+			remove: '移除',
+			maxReached: '最多 25 个',
+			searchPlaceholder: '从下方选择或搜索股票代码',
+			searchStockPlaceholder: '输入股票代码或名称搜索…',
+			noMatch: '无匹配',
+			allAdded: '已全部添加',
+			presetLabel: '常用指数与股票',
+			searchLabel: '搜索股票',
+			searching: '搜索中…'
 		}
 	},
 	en: {
@@ -754,8 +789,25 @@ export const UI_TEXTS: Record<
 			remove: 'Remove',
 			maxReached: 'Max 15 commodities',
 			searchPlaceholder: 'Search name or symbol',
+			searchStockPlaceholder: 'Search commodity by symbol or name…',
 			noMatch: 'No match',
-			allAdded: 'All added'
+			allAdded: 'All added',
+			presetLabel: 'Common commodities',
+			searchLabel: 'Search commodity',
+			searching: 'Searching…'
+		},
+		marketPicker: {
+			addMore: 'Add more',
+			modalTitle: 'Add index / stock',
+			remove: 'Remove',
+			maxReached: 'Max 25',
+			searchPlaceholder: 'Choose below or search by symbol',
+			searchStockPlaceholder: 'Search by symbol or name…',
+			noMatch: 'No match',
+			allAdded: 'All added',
+			presetLabel: 'Indices & stocks',
+			searchLabel: 'Search stock',
+			searching: 'Searching…'
 		}
 	}
 };

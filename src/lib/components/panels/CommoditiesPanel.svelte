@@ -3,6 +3,7 @@
 	import Modal from '$lib/components/modals/Modal.svelte';
 	import { commodities, vix, settings, commodityList } from '$lib/stores';
 	import { getPanelName, UI_TEXTS, COMMODITY_OPTIONS } from '$lib/config';
+	import { searchSymbols } from '$lib/api/twelveData';
 
 	interface Props {
 		onCommodityListChange?: () => void;
@@ -12,6 +13,14 @@
 
 	let addModalOpen = $state(false);
 	let searchQuery = $state('');
+	let stockSearchQuery = $state('');
+	let searchResults = $state<
+		{ symbol: string; name: string; exchange?: string; instrument_type?: string; country?: string }[]
+	>([]);
+	let searchLoading = $state(false);
+	let searchDebounceId = $state<ReturnType<typeof setTimeout> | null>(null);
+	let lastRequestedQuery = $state('');
+	let searchResultsEl = $state<HTMLDivElement | null>(null);
 
 	function getCommodityName(symbol: string, locale: 'zh' | 'en'): string {
 		return UI_TEXTS[locale].commodities[symbol] ?? symbol;
@@ -20,22 +29,26 @@
 	const items = $derived($commodities.items);
 	const loading = $derived($commodities.loading);
 	const error = $derived($commodities.error);
-	const selectedSymbols = $derived($commodityList);
+	const selectedList = $derived($commodityList);
+	const selectedSymbolsSet = $derived(
+		new Set(selectedList.map((i) => i.symbol.toUpperCase()))
+	);
 	const t = $derived(UI_TEXTS[$settings.locale].commodityPicker);
 	const modalCloseLabel = $derived(UI_TEXTS[$settings.locale].modal.close);
 	const emptyCommodities = $derived(UI_TEXTS[$settings.locale].empty.commodities);
 
+	// Preset options filtered by search (symbol/name), excluding already-selected
 	const availableOptions = $derived(
 		COMMODITY_OPTIONS.filter(
 			(opt) =>
-				!selectedSymbols.includes(opt.symbol) &&
+				!selectedSymbolsSet.has(opt.symbol.toUpperCase()) &&
 				(searchQuery === '' ||
 					opt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 					opt.display.toLowerCase().includes(searchQuery.toLowerCase()))
 		).slice(0, 20)
 	);
 
-	const canAddMore = $derived(selectedSymbols.length < 15);
+	const canAddMore = $derived(selectedList.length < 15);
 
 	type VixStatusKey = 'highFear' | 'elevated' | 'low';
 
@@ -57,8 +70,8 @@
 	const vixStatus = $derived(vixStatusKey ? UI_TEXTS[$settings.locale].status[vixStatusKey] : '');
 	const vixClass = $derived(getVixClass($vix?.price));
 
-	function handleAddCommodity(symbol: string) {
-		if (commodityList.addCommodity(symbol)) {
+	function handleAddPreset(symbol: string) {
+		if (commodityList.addFromPreset(symbol)) {
 			addModalOpen = false;
 			searchQuery = '';
 			onCommodityListChange?.();
@@ -68,6 +81,92 @@
 	function handleRemoveCommodity(symbol: string) {
 		commodityList.removeCommodity(symbol);
 		onCommodityListChange?.();
+	}
+
+	function mapSearchSymbol(entry: { symbol: string; name: string; exchange?: string }): string {
+		return entry.symbol.trim();
+	}
+
+	// Debounced Twelve Data symbol search for commodities (ETF / futures proxies)
+	function doCommoditySearch(q: string) {
+		const trimmed = q.trim();
+		if (!trimmed || trimmed.length < 2) {
+			searchResults = [];
+			searchLoading = false;
+			return;
+		}
+		searchLoading = true;
+		lastRequestedQuery = trimmed;
+		searchSymbols(trimmed)
+			.then((res) => {
+				if (lastRequestedQuery !== trimmed) return;
+				const seen = new Set<string>();
+				searchResults = res
+					// 1) 去重
+					.filter((r) => {
+						const key = r.symbol.toUpperCase();
+						if (seen.has(key)) return false;
+						seen.add(key);
+						return true;
+					})
+					// 2) 只保留大宗相关（期货 / 商品 ETF 等），尽量过滤个股
+					.filter((r) => {
+						const type = r.instrument_type?.toLowerCase() ?? '';
+						const name = r.name.toLowerCase();
+						const sym = r.symbol.toUpperCase();
+						const isCommodityKeyword =
+							/\bgold\b|\boil\b|\bbrent\b|\bwti\b|\bgas\b|\bnatgas\b|\bwheat\b|\bcorn\b|\bsugar\b|\bsilver\b|\bcopper\b|\bplatinum\b|\bpalladium\b|\bvix\b/.test(
+								name
+							) ||
+							['GC', 'CL', 'NG', 'ZW', 'ZC', 'SB', 'VIX'].some((k) => sym.includes(k));
+						const isCommodityInstrument =
+							type.includes('etf') ||
+							type.includes('fund') ||
+							type.includes('index') ||
+							type.includes('future');
+						return isCommodityKeyword || isCommodityInstrument;
+					});
+				requestAnimationFrame(() =>
+					searchResultsEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+				);
+			})
+			.catch(() => {
+				if (lastRequestedQuery !== trimmed) return;
+				searchResults = [];
+				requestAnimationFrame(() =>
+					searchResultsEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+				);
+			})
+			.finally(() => {
+				searchLoading = false;
+			});
+	}
+
+	function onCommoditySearchInput() {
+		if (searchDebounceId) clearTimeout(searchDebounceId);
+		const q = stockSearchQuery.trim();
+		if (q.length < 2) {
+			searchResults = [];
+			searchLoading = false;
+			return;
+		}
+		searchLoading = true;
+		searchDebounceId = setTimeout(() => {
+			doCommoditySearch(q);
+			searchDebounceId = null;
+		}, 350);
+	}
+
+	function handleAddSearchResult(entry: { symbol: string; name: string; exchange?: string }) {
+		const mapped = mapSearchSymbol(entry);
+		if (
+			commodityList.addCommodity({
+				symbol: mapped,
+				name: entry.name || entry.symbol
+			})
+		) {
+			onCommodityListChange?.();
+		}
 	}
 </script>
 
@@ -88,10 +187,10 @@
 				<div class="commodity-item">
 					<MarketItem
 						{item}
-						displayName={getCommodityName(item.symbol, $settings.locale)}
+						displayName={item.name}
 						currencySymbol={item.symbol === '^VIX' ? '' : '$'}
 					/>
-					{#if selectedSymbols.length > 1}
+					{#if selectedList.length > 1}
 						<button
 							type="button"
 							class="remove-btn"
@@ -115,7 +214,7 @@
 				title={t.addCommodity}
 				onclick={() => (addModalOpen = true)}
 			>
-				+ {t.addCommodity}
+				+
 			</button>
 		{:else}
 			<span class="max-hint">{t.maxReached}</span>
@@ -130,9 +229,18 @@
 	onClose={() => {
 		addModalOpen = false;
 		searchQuery = '';
+		stockSearchQuery = '';
+		searchResults = [];
+		searchLoading = false;
+		lastRequestedQuery = '';
+		if (searchDebounceId) {
+			clearTimeout(searchDebounceId);
+			searchDebounceId = null;
+		}
 	}}
 >
 	<div class="add-commodity-content">
+		<p class="section-label">{t.presetLabel}</p>
 		<input
 			type="text"
 			class="search-input"
@@ -144,7 +252,7 @@
 				<button
 					type="button"
 					class="commodity-option"
-					onclick={() => handleAddCommodity(opt.symbol)}
+					onclick={() => handleAddPreset(opt.symbol)}
 				>
 					<span class="opt-symbol">{opt.display}</span>
 					<span class="opt-name">{getCommodityName(opt.symbol, $settings.locale)}</span>
@@ -154,6 +262,44 @@
 				<p class="no-options">{searchQuery ? t.noMatch : t.allAdded}</p>
 			{/if}
 		</div>
+
+		<p class="section-label">{t.searchLabel}</p>
+		<input
+			type="text"
+			class="search-input"
+			placeholder={t.searchStockPlaceholder}
+			bind:value={stockSearchQuery}
+			oninput={onCommoditySearchInput}
+		/>
+		{#if stockSearchQuery.trim().length >= 2}
+			{#if searchLoading}
+				<p class="search-status">{t.searching}</p>
+			{:else}
+				<div class="search-results-wrapper" bind:this={searchResultsEl}>
+					<div class="search-results">
+						{#each searchResults as r (r.symbol)}
+							{@const mapped = mapSearchSymbol(r)}
+							{@const isAdded = selectedSymbolsSet.has(mapped.toUpperCase())}
+							<button
+								type="button"
+								class={`option-btn ${isAdded ? 'option-btn-added' : ''}`}
+								onclick={() =>
+									isAdded ? handleRemoveCommodity(mapped) : handleAddSearchResult(r)}
+							>
+								<span class="opt-symbol">{r.symbol}</span>
+								<span class="opt-name">{r.name}</span>
+								<span class={`opt-action ${isAdded ? 'opt-action-remove' : 'opt-action-add'}`}>
+									{isAdded ? '×' : '+'}
+								</span>
+							</button>
+						{/each}
+						{#if searchResults.length === 0}
+							<p class="no-options">{t.noMatch}</p>
+						{/if}
+					</div>
+				</div>
+			{/if}
+		{/if}
 	</div>
 </Modal>
 
@@ -206,12 +352,17 @@
 	}
 
 	.add-commodity-btn {
-		padding: 0.35rem 0.6rem;
+		width: 2rem;
+		height: 2rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		background: rgba(var(--accent-rgb), 0.1);
 		border: 1px solid var(--accent);
-		border-radius: 4px;
+		border-radius: 6px;
 		color: var(--accent);
-		font-size: 0.65rem;
+		font-size: 1.25rem;
+		line-height: 1;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
@@ -229,6 +380,13 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
+	}
+
+	.section-label {
+		font-size: 0.7rem;
+		color: var(--text-muted);
+		margin: 0;
+		font-weight: 600;
 	}
 
 	.search-input {
@@ -281,6 +439,79 @@
 
 	.opt-name {
 		color: var(--text-secondary);
+	}
+
+	/* Search results (Twelve Data) */
+	.search-results-wrapper {
+		position: relative;
+		min-height: 6rem;
+		flex-shrink: 0;
+	}
+
+	.search-results {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		max-height: 12rem;
+		overflow-y: auto;
+	}
+
+	.option-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		color: var(--text-primary);
+		font-size: 0.75rem;
+		text-align: left;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.option-btn:hover {
+		background: var(--surface-hover);
+		border-color: var(--accent);
+	}
+
+	/* Ensure long names truncate instead of pushing symbol/action */
+	.option-btn .opt-symbol {
+		flex: 0 0 auto;
+		min-width: 3.5rem;
+	}
+
+	.option-btn .opt-name {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.option-btn-added {
+		opacity: 0.9;
+	}
+
+	.opt-action {
+		margin-left: auto;
+		font-weight: 700;
+	}
+
+	.opt-action-add {
+		color: var(--accent);
+	}
+
+	.opt-action-remove {
+		color: var(--danger);
+	}
+
+	.search-status {
+		font-size: 0.7rem;
+		color: var(--text-muted);
+		margin: 0;
+		padding: 0.5rem;
 	}
 
 	.no-options {

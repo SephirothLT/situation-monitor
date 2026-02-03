@@ -73,6 +73,16 @@ export const AI_API_KEY = browser
 export const DEEPSEEK_API_BASE = 'https://api.deepseek.com/v1';
 
 /**
+ * Twelve Data API key (optional) for symbol search and optional quote fallback
+ * Supports both VITE_TWELVE_DATA_API_KEY and common typo VITE_TWLEVE_DATA_API_KEY
+ */
+export const TWELVE_DATA_API_KEY = browser
+	? (import.meta.env?.VITE_TWELVE_DATA_API_KEY ?? import.meta.env?.VITE_TWLEVE_DATA_API_KEY ?? '')
+	: (process.env.VITE_TWELVE_DATA_API_KEY ?? process.env.VITE_TWLEVE_DATA_API_KEY ?? '');
+
+export const TWELVE_DATA_BASE_URL = 'https://api.twelvedata.com';
+
+/**
  * Check if we're in development mode
  * Uses import.meta.env which is available in both browser and test environments
  */
@@ -84,7 +94,8 @@ const isDev = browser ? (import.meta.env?.DEV ?? false) : false;
  * Fallback: corsproxy.io (public, may rate limit)
  */
 export const CORS_PROXIES = {
-	primary: 'https://situation-monitor-proxy.seanthielen-e.workers.dev/?url=',
+	// The Cloudflare worker blocks many finance domains (403). Use a permissive public proxy.
+	primary: 'https://corsproxy.io/?url=',
 	fallback: 'https://corsproxy.io/?url='
 } as const;
 

@@ -47,12 +47,42 @@ export const COMMODITY_OPTIONS: CommodityConfig[] = [
 	{ symbol: 'SB=F', name: 'Sugar', display: 'SUGAR' }
 ];
 
-// Major stock indices
-export const INDICES = [
-	{ symbol: '^DJI', name: 'Dow Jones', display: 'DOW' },
-	{ symbol: '^GSPC', name: 'S&P 500', display: 'S&P' },
-	{ symbol: '^IXIC', name: 'NASDAQ', display: 'NDQ' },
-	{ symbol: '^RUT', name: 'Russell 2000', display: 'RUT' }
+// Index/stock entry for market panel (symbol + name)
+export interface IndexConfig {
+	symbol: string;
+	name: string;
+}
+
+// Major stock indices (default 4)
+export const INDICES: IndexConfig[] = [
+	{ symbol: '^DJI', name: 'Dow Jones' },
+	{ symbol: '^GSPC', name: 'S&P 500' },
+	{ symbol: '^IXIC', name: 'NASDAQ' },
+	{ symbol: '^RUT', name: 'Russell 2000' }
+];
+
+// Extended list for "添加更多" picker (indices + common ETFs/stocks)
+export const INDICE_OPTIONS: IndexConfig[] = [
+	...INDICES,
+	{ symbol: 'VIX', name: 'CBOE VIX' },
+	{ symbol: 'SPY', name: 'SPDR S&P 500 ETF' },
+	{ symbol: 'QQQ', name: 'Invesco QQQ' },
+	{ symbol: 'DIA', name: 'SPDR Dow Jones ETF' },
+	{ symbol: 'IWM', name: 'iShares Russell 2000' },
+	{ symbol: 'AAPL', name: 'Apple' },
+	{ symbol: 'MSFT', name: 'Microsoft' },
+	{ symbol: 'GOOGL', name: 'Alphabet (Google)' },
+	{ symbol: 'AMZN', name: 'Amazon' },
+	{ symbol: 'NVDA', name: 'NVIDIA' },
+	{ symbol: 'META', name: 'Meta' },
+	{ symbol: 'TSLA', name: 'Tesla' },
+	{ symbol: 'BRK.B', name: 'Berkshire Hathaway' },
+	{ symbol: 'JPM', name: 'JPMorgan Chase' },
+	{ symbol: 'V', name: 'Visa' },
+	{ symbol: 'JNJ', name: 'Johnson & Johnson' },
+	{ symbol: 'WMT', name: 'Walmart' },
+	{ symbol: 'XOM', name: 'Exxon Mobil' },
+	{ symbol: 'UNH', name: 'UnitedHealth' }
 ];
 
 // Crypto assets tracked (default list; user can add/remove via panel)

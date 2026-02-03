@@ -61,6 +61,9 @@ export { cryptoList } from './cryptoList';
 // Commodity list store (user-selected commodities for commodities panel)
 export { commodityList } from './commodityList';
 
+// Indices list store (user-selected indices/stocks for markets panel)
+export { indicesList } from './indicesList';
+
 // BlockBeats store (crypto flash news)
 export { blockbeats } from './blockbeats';
 

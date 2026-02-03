@@ -34,10 +34,12 @@ export {
 	COMMODITIES,
 	COMMODITY_OPTIONS,
 	INDICES,
+	INDICE_OPTIONS,
 	CRYPTO,
 	CRYPTO_OPTIONS,
 	type SectorConfig,
 	type CommodityConfig,
+	type IndexConfig,
 	type CryptoOption
 } from './markets';
 

@@ -35,6 +35,7 @@
 		refresh,
 		cryptoList,
 		commodityList,
+		indicesList,
 		whaleAddresses,
 		blockbeats,
 		allNewsItems,
@@ -106,7 +107,8 @@
 		try {
 			const cryptoCoins = cryptoList.getSelectedConfig();
 			const commodityConfigs = commodityList.getSelectedConfig();
-			const data = await fetchAllMarkets(cryptoCoins, commodityConfigs);
+			const indicesConfig = indicesList.getSelectedConfig();
+			const data = await fetchAllMarkets(cryptoCoins, commodityConfigs, indicesConfig);
 			markets.setIndices(data.indices);
 			markets.setSectors(data.sectors);
 			markets.setCommodities(data.commodities);
@@ -225,6 +227,12 @@
 	// Display order from settings (persisted; pin moves panel to front in order)
 	const displayOrder = $derived($settings.order.filter((id) => $settings.enabled[id]));
 
+	// Map always at top (outside masonry); rest go into masonry
+	const mapEnabled = $derived($settings.enabled['map']);
+	const displayOrderWithoutMap = $derived(
+		displayOrder.filter((id) => id !== 'map') as PanelId[]
+	);
+
 	// Masonry: column count from viewport (same breakpoints as layout)
 	let numColumns = $state(1);
 	function getNumColumns(w: number): number {
@@ -235,7 +243,7 @@
 		order.forEach((id, i) => cols[i % n].push(id));
 		return cols;
 	}
-	const masonryColumns = $derived(distribute(displayOrder, numColumns));
+	const masonryColumns = $derived(distribute(displayOrderWithoutMap, numColumns));
 
 	// AI Insights: aggregate context from enabled panels only
 	const aiContext = $derived(
@@ -278,7 +286,7 @@
 
 	function handleDragStart(panelId: PanelId) {
 		draggingPanelId = panelId;
-		dragOverIndex = displayOrder.indexOf(panelId);
+		dragOverIndex = displayOrderWithoutMap.indexOf(panelId);
 		window.addEventListener('pointermove', handlePointerMove);
 		window.addEventListener('pointerup', handlePointerUp);
 	}
@@ -298,7 +306,7 @@
 
 	function handlePointerUp() {
 		if (draggingPanelId === null) return;
-		const visibleOrder = [...displayOrder];
+		const visibleOrder = [...displayOrderWithoutMap];
 		const from = visibleOrder.indexOf(draggingPanelId);
 		const to = dragOverIndex ?? from;
 		if (from !== -1 && to !== from) {
@@ -306,7 +314,8 @@
 			visibleOrder.splice(Math.min(to, visibleOrder.length), 0, draggingPanelId);
 			const fullOrder = $settings.order;
 			const disabled = fullOrder.filter((id) => !$settings.enabled[id]);
-			settings.updateOrder([...visibleOrder, ...disabled]);
+			const newOrder = (mapEnabled ? (['map'] as PanelId[]) : []).concat(visibleOrder).concat(disabled);
+			settings.updateOrder(newOrder);
 		}
 		draggingPanelId = null;
 		dragOverIndex = null;
@@ -419,6 +428,13 @@
 
 	<main class="main-content">
 		<Dashboard>
+			{#if mapEnabled}
+				<div class="map-row">
+					<div class="panel-slot map-slot">
+						<MapPanel monitors={$monitors.monitors} />
+					</div>
+				</div>
+			{/if}
 			<div class="masonry">
 				{#each masonryColumns as column, colIndex}
 					<div class="masonry-column">
@@ -439,11 +455,7 @@
 					{#if dragOverIndex === i}
 						<div class="drop-indicator" aria-hidden="true"></div>
 					{/if}
-					{#if panelId === 'map'}
-						<div class="panel-slot map-slot" class:dragging={draggingPanelId === panelId}>
-							<MapPanel monitors={$monitors.monitors} />
-						</div>
-					{:else if panelId === 'politics'}
+					{#if panelId === 'politics'}
 						<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
 						<NewsPanel
 							category="politics"
@@ -490,7 +502,7 @@
 					</div>
 				{:else if panelId === 'markets'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
-						<MarketsPanel onRetry={loadMarkets} />
+						<MarketsPanel onRetry={loadMarkets} onIndicesListChange={loadMarkets} />
 					</div>
 				{:else if panelId === 'heatmap'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
@@ -682,9 +694,13 @@
 		overflow-y: auto;
 	}
 
-	.map-slot {
-		column-span: all;
+	.map-row {
+		width: 100%;
 		margin-bottom: 1rem;
+	}
+
+	.map-slot {
+		width: 100%;
 	}
 
 	@media (max-width: 768px) {

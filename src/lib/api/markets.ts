@@ -11,7 +11,8 @@ import {
 	COMMODITIES,
 	CRYPTO,
 	type CryptoOption,
-	type CommodityConfig
+	type CommodityConfig,
+	type IndexConfig
 } from '$lib/config/markets';
 import type { MarketItem, SectorPerformance, CryptoItem } from '$lib/types';
 import { fetchWithProxy, logger, FINNHUB_API_KEY, FINNHUB_BASE_URL } from '$lib/config/api';
@@ -96,6 +97,82 @@ async function fetchFinnhubQuote(symbol: string): Promise<FinnhubQuote | null> {
 	}
 }
 
+type EastmoneyQuote = {
+	price: number;
+	change: number;
+	pct: number;
+	high: number;
+	low: number;
+	open: number;
+	prevClose: number;
+};
+
+/**
+ * Fetch quote from Eastmoney (no API key, used for China A-shares fallback).
+ * Returns price data in normal decimals (CNY), not fen.
+ * Tries server proxy (/api/eastmoney) first, then api.allorigins.win for static deploy.
+ */
+async function fetchEastmoneyQuote(symbol: string): Promise<EastmoneyQuote | null> {
+	// Accept raw 6-digit, or suffix .SS/.SZ
+	const raw = symbol.replace(/\.SS$/i, '').replace(/\.SZ$/i, '').trim();
+	if (!/^\d{6}$/.test(raw)) return null;
+	const market = raw.startsWith('6') ? '1' : raw.startsWith('0') || raw.startsWith('3') ? '0' : null;
+	if (!market) return null;
+
+	const secid = `${market}.${raw}`;
+	const target = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f169,f170,f44,f45,f46,f47,f48,f58,f60`;
+
+	const parseEastmoneyResponse = (data: unknown): EastmoneyQuote | null => {
+		const obj = data as {
+			data?: {
+				f43?: number;
+				f169?: number;
+				f170?: number;
+				f44?: number;
+				f45?: number;
+				f46?: number;
+				f60?: number;
+			};
+		};
+		const d = obj?.data;
+		if (!d || typeof d.f43 !== 'number') return null;
+		const toPrice = (v?: number) => (typeof v === 'number' ? v / 100 : NaN);
+		return {
+			price: toPrice(d.f43),
+			change: toPrice(d.f169),
+			pct: toPrice(d.f170),
+			high: toPrice(d.f44),
+			low: toPrice(d.f45),
+			open: toPrice(d.f46),
+			prevClose: toPrice(d.f60)
+		};
+	};
+
+	// 1. Prefer our API route (works in dev and on Vercel; avoids 403 from Eastmoney)
+	try {
+		const res = await fetch(`/api/eastmoney?secid=${encodeURIComponent(secid)}`);
+		if (res.ok) {
+			const data = await res.json();
+			const parsed = parseEastmoneyResponse(data);
+			if (parsed) return parsed;
+		}
+	} catch {
+		// Fall through to public proxy
+	}
+
+	// 2. Fallback for static deploy: api.allorigins.win (corsproxy.io often returns 403 for Eastmoney)
+	try {
+		const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
+		const res = await fetch(proxyUrl);
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		const data = await res.json();
+		return parseEastmoneyResponse(data);
+	} catch (error) {
+		logger.warn('Markets API', 'Eastmoney quote failed', symbol, error);
+		return null;
+	}
+}
+
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 
 /**
@@ -168,11 +245,13 @@ export async function fetchCryptoPrices(coins?: CryptoOption[]): Promise<CryptoI
 }
 
 /**
- * Fetch market indices from Finnhub
+ * Fetch market indices from Finnhub.
+ * @param indicesConfig - List from indicesList.getSelectedConfig(). If omitted, uses INDICES default.
  */
-export async function fetchIndices(): Promise<MarketItem[]> {
+export async function fetchIndices(indicesConfig?: IndexConfig[]): Promise<MarketItem[]> {
+	const list = indicesConfig && indicesConfig.length > 0 ? indicesConfig : INDICES;
 	const createEmptyIndices = () =>
-		INDICES.map((i) => createEmptyMarketItem(i.symbol, i.name, 'index'));
+		list.map((i) => createEmptyMarketItem(i.symbol, i.name, 'index'));
 
 	if (!hasFinnhubApiKey()) {
 		logger.warn('Markets API', 'Finnhub API key not configured. Add VITE_FINNHUB_API_KEY to .env');
@@ -182,22 +261,54 @@ export async function fetchIndices(): Promise<MarketItem[]> {
 	try {
 		logger.log('Markets API', 'Fetching indices from Finnhub');
 
-		const quotes = await Promise.all(
-			INDICES.map(async (index) => {
-				const etfSymbol = INDEX_ETF_MAP[index.symbol] || index.symbol;
-				const quote = await fetchFinnhubQuote(etfSymbol);
-				return { index, quote };
+		const resolveSymbol = (index: IndexConfig) => {
+			const baseSymbol = INDEX_ETF_MAP[index.symbol] || index.symbol;
+			// China A-share mapping: 6xxxxx -> SSE (.SS), 0/3xxxxx -> SZ (.SZ)
+			if (/^\d{6}$/.test(baseSymbol)) {
+				if (baseSymbol.startsWith('6')) return `${baseSymbol}.SS`;
+				if (baseSymbol.startsWith('0') || baseSymbol.startsWith('3')) return `${baseSymbol}.SZ`;
+			}
+			return baseSymbol;
+		};
+
+		const isChinaASymbol = (symbol: string) => {
+			const raw = symbol.replace(/\.SS$/i, '').replace(/\.SZ$/i, '');
+			return /^\d{6}$/.test(raw);
+		};
+
+		const items = await Promise.all(
+			list.map(async (index) => {
+				const fetchSymbol = resolveSymbol(index);
+				const isChinaA = isChinaASymbol(fetchSymbol);
+
+				// Prefer Eastmoney for China A to avoid Finnhub free-tier limitations
+				if (isChinaA) {
+					const cnQuote = await fetchEastmoneyQuote(fetchSymbol);
+					if (cnQuote) {
+						return {
+							symbol: index.symbol,
+							name: index.name,
+							price: cnQuote.price,
+							change: cnQuote.change,
+							changePercent: cnQuote.pct,
+							type: 'index' as const
+						};
+					}
+				}
+
+				const quote = await fetchFinnhubQuote(fetchSymbol);
+				return {
+					symbol: index.symbol,
+					name: index.name,
+					price: quote?.c ?? NaN,
+					change: quote?.d ?? NaN,
+					changePercent: quote?.dp ?? NaN,
+					type: 'index' as const
+				};
 			})
 		);
 
-		return quotes.map(({ index, quote }) => ({
-			symbol: index.symbol,
-			name: index.name,
-			price: quote?.c ?? NaN,
-			change: quote?.d ?? NaN,
-			changePercent: quote?.dp ?? NaN,
-			type: 'index' as const
-		}));
+		return items;
 	} catch (error) {
 		logger.error('Markets API', 'Error fetching indices:', error);
 		return createEmptyIndices();
@@ -316,11 +427,12 @@ interface AllMarketsData {
  */
 export async function fetchAllMarkets(
 	cryptoCoins?: CryptoOption[],
-	commodityConfigs?: CommodityConfig[]
+	commodityConfigs?: CommodityConfig[],
+	indicesConfig?: IndexConfig[]
 ): Promise<AllMarketsData> {
 	const [crypto, indices, sectors, commodities] = await Promise.all([
 		fetchCryptoPrices(cryptoCoins),
-		fetchIndices(),
+		fetchIndices(indicesConfig),
 		fetchSectorPerformance(),
 		fetchCommodities(commodityConfigs)
 	]);
