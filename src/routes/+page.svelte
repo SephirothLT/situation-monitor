@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { flip } from 'svelte/animate';
 	import { get } from 'svelte/store';
 	import { Header, Dashboard } from '$lib/components/layout';
 	import { SettingsModal, MonitorFormModal, OnboardingModal } from '$lib/components/modals';
@@ -224,6 +225,18 @@
 	// Display order from settings (persisted; pin moves panel to front in order)
 	const displayOrder = $derived($settings.order.filter((id) => $settings.enabled[id]));
 
+	// Masonry: column count from viewport (same breakpoints as layout)
+	let numColumns = $state(1);
+	function getNumColumns(w: number): number {
+		return w >= 2000 ? 6 : w >= 1600 ? 5 : w >= 1280 ? 4 : w >= 960 ? 3 : w >= 768 ? 2 : 1;
+	}
+	function distribute(order: PanelId[], n: number): PanelId[][] {
+		const cols: PanelId[][] = Array.from({ length: n }, () => []);
+		order.forEach((id, i) => cols[i % n].push(id));
+		return cols;
+	}
+	const masonryColumns = $derived(distribute(displayOrder, numColumns));
+
 	// AI Insights: aggregate context from enabled panels only
 	const aiContext = $derived(
 		buildAIContext({
@@ -359,6 +372,10 @@
 
 	// Initial load
 	onMount(() => {
+		numColumns = getNumColumns(window.innerWidth);
+		const onResize = () => (numColumns = getNumColumns(window.innerWidth));
+		window.addEventListener('resize', onResize);
+
 		// Check if first visit
 		if (!settings.isOnboardingComplete()) {
 			onboardingOpen = true;
@@ -386,6 +403,7 @@
 		refresh.setupAutoRefresh(() => handleRefresh(true));
 
 		return () => {
+			window.removeEventListener('resize', onResize);
 			refresh.stopAutoRefresh();
 		};
 	});
@@ -401,18 +419,23 @@
 
 	<main class="main-content">
 		<Dashboard>
-			{#each displayOrder as panelId, i}
-				<div
-					class="slot-wrapper"
-					role="group"
-					aria-label="Panel slot"
-					data-slot-index={i}
-					data-panel-id={panelId}
-					onpointerdown={(e) => handleSlotPointerDown(panelId, e)}
-					onpointerup={handleSlotPointerUp}
-					onpointerleave={handleSlotPointerUp}
-					onpointercancel={handleSlotPointerUp}
-				>
+			<div class="masonry">
+				{#each masonryColumns as column, colIndex}
+					<div class="masonry-column">
+						{#each column as panelId, rowIndex (panelId)}
+							{@const i = colIndex + rowIndex * numColumns}
+							<div
+								class="slot-wrapper"
+								role="group"
+								aria-label="Panel slot"
+								data-slot-index={i}
+								data-panel-id={panelId}
+								onpointerdown={(e) => handleSlotPointerDown(panelId, e)}
+								onpointerup={handleSlotPointerUp}
+								onpointerleave={handleSlotPointerUp}
+								onpointercancel={handleSlotPointerUp}
+								animate:flip={{ duration: 280, easing: (t) => t * (2 - t) }}
+							>
 					{#if dragOverIndex === i}
 						<div class="drop-indicator" aria-hidden="true"></div>
 					{/if}
@@ -617,13 +640,16 @@
 						/>
 					</div>
 				{/if}
-				</div>
-			{/each}
-			{#if dragOverIndex === displayOrder.length}
-				<div class="drop-indicator-wrapper">
-					<div class="drop-indicator drop-indicator-end" aria-hidden="true"></div>
-				</div>
-			{/if}
+							</div>
+						{/each}
+					</div>
+				{/each}
+				{#if dragOverIndex === displayOrder.length}
+					<div class="drop-indicator-wrapper masonry-end">
+						<div class="drop-indicator drop-indicator-end" aria-hidden="true"></div>
+					</div>
+				{/if}
+			</div>
 		</Dashboard>
 	</main>
 

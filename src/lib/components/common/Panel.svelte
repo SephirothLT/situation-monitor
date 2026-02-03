@@ -137,19 +137,21 @@
 		</div>
 	</div>
 
-	<div class="panel-content" class:hidden={collapsed}>
-		{#if error}
-			<div class="error-msg" role="alert">
-				<span>{error}</span>
-				{#if onRetry}
-					<button type="button" class="retry-btn" onclick={onRetry}>{t.common.retry}</button>
-				{/if}
-			</div>
-		{:else if loading}
-			<div class="loading-msg" aria-live="polite">{t.common.loading}</div>
-		{:else}
-			{@render children()}
-		{/if}
+	<div class="panel-content" class:collapsed aria-hidden={collapsed}>
+		<div class="panel-content-inner">
+			{#if error}
+				<div class="error-msg" role="alert">
+					<span>{error}</span>
+					{#if onRetry}
+						<button type="button" class="retry-btn" onclick={onRetry}>{t.common.retry}</button>
+					{/if}
+				</div>
+			{:else if loading}
+				<div class="loading-msg" aria-live="polite">{t.common.loading}</div>
+			{:else}
+				{@render children()}
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -340,14 +342,21 @@
 		background: rgba(255, 68, 68, 0.1);
 	}
 
+	/* Smooth collapse: max-height + overflow so height changes gradually and siblings reflow smoothly */
 	.panel-content {
-		flex: 1;
-		overflow-y: auto;
-		padding: 0.5rem;
+		max-height: 2000px;
+		overflow: hidden;
+		transition: max-height 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 	}
 
-	.panel-content.hidden {
-		display: none;
+	.panel-content.collapsed {
+		max-height: 0;
+		transition: max-height 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
+	.panel-content-inner {
+		overflow-y: auto;
+		padding: 0.5rem;
 	}
 
 	.error-msg {

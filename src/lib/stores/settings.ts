@@ -206,7 +206,8 @@ function createSettingsStore() {
 		},
 
 		/**
-		 * Toggle panel pinned (pin to top). Newly pinned goes to the very front, before existing pinned.
+		 * Toggle panel pinned (pin to top). Newly pinned goes to the very front.
+		 * Unpin: remove from pinned and move panel to right after the last pinned (so pinned stay above).
 		 */
 		togglePin(panelId: PanelId) {
 			update((state) => {
@@ -216,6 +217,16 @@ function createSettingsStore() {
 				let newOrder = state.order;
 				if (idx === -1) {
 					newOrder = [panelId, ...state.order.filter((id) => id !== panelId)];
+					saveToStorage('order', newOrder);
+				} else {
+					// Unpin: move this panel to right after the last pinned so pinned rows stay above
+					const without = state.order.filter((id) => id !== panelId);
+					const pinnedSet = new Set(newPinned);
+					let insertIndex = 0;
+					for (let i = 0; i < without.length; i++) {
+						if (pinnedSet.has(without[i])) insertIndex = i + 1;
+					}
+					newOrder = [...without.slice(0, insertIndex), panelId, ...without.slice(insertIndex)];
 					saveToStorage('order', newOrder);
 				}
 				saveToStorage('pinned', newPinned);
