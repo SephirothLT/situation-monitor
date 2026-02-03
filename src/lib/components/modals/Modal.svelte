@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -11,7 +12,32 @@
 		children: Snippet;
 	}
 
-	let { open = false, title, onClose, closeLabel = 'Close', header, footer, children }: Props = $props();
+	let {
+		open = false,
+		title,
+		onClose,
+		closeLabel = 'Close',
+		header,
+		footer,
+		children
+	}: Props = $props();
+
+	let closeButtonRef = $state<HTMLButtonElement | null>(null);
+	let previousActive = $state<HTMLElement | null>(null);
+
+	$effect(() => {
+		if (open) {
+			previousActive = document.activeElement as HTMLElement | null;
+			tick().then(() => {
+				if (closeButtonRef) closeButtonRef.focus();
+			});
+		} else {
+			if (previousActive && typeof previousActive.focus === 'function') {
+				previousActive.focus();
+			}
+			previousActive = null;
+		}
+	});
 
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
@@ -38,7 +64,12 @@
 				{#if header}
 					{@render header()}
 				{/if}
-				<button class="modal-close" onclick={onClose} aria-label={closeLabel}>×</button>
+				<button
+					class="modal-close"
+					bind:this={closeButtonRef}
+					onclick={onClose}
+					aria-label={closeLabel}>×</button
+				>
 			</div>
 
 			<div class="modal-content">
@@ -64,6 +95,12 @@
 		justify-content: center;
 		z-index: 1000;
 		padding: 1rem;
+	}
+
+	@media (max-width: 360px) {
+		.modal-backdrop {
+			padding: 0.5rem;
+		}
 	}
 
 	.modal {
@@ -118,6 +155,15 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: 1rem;
+	}
+
+	@media (max-width: 360px) {
+		.modal-header {
+			padding: 0.75rem;
+		}
+		.modal-content {
+			padding: 0.75rem;
+		}
 	}
 
 	.modal-footer {

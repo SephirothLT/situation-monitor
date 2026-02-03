@@ -63,6 +63,16 @@ export const ETHERSCAN_API_KEY = browser
 export const ETHERSCAN_API_BASE = 'https://api.etherscan.io/v2/api';
 
 /**
+ * AI API key (optional) for AI Insights panel – DeepSeek chat completions
+ * Set VITE_AI_API_KEY in .env to enable "生成总结" in AI 分析 panel
+ */
+export const AI_API_KEY = browser
+	? (import.meta.env?.VITE_AI_API_KEY ?? '')
+	: (process.env.VITE_AI_API_KEY ?? '');
+
+export const DEEPSEEK_API_BASE = 'https://api.deepseek.com/v1';
+
+/**
  * Check if we're in development mode
  * Uses import.meta.env which is available in both browser and test environments
  */

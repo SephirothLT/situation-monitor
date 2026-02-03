@@ -2,7 +2,7 @@
 	import { Panel, Badge } from '$lib/components/common';
 	import { getRelativeTime } from '$lib/utils';
 	import { intelNews, settings } from '$lib/stores';
-	import { getPanelName } from '$lib/config';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 	import type { NewsItem } from '$lib/types';
 
 	type SourceType = 'osint' | 'govt' | 'think-tank' | 'defense' | 'regional' | 'cyber';
@@ -21,6 +21,7 @@
 
 	// Destructure store state for cleaner access
 	const { items: storeItems, loading, error } = $derived($intelNews);
+	const emptyIntel = $derived(UI_TEXTS[$settings.locale].empty.intel);
 
 	// Infer source type from source name
 	function inferSourceType(source: string): SourceType {
@@ -29,7 +30,8 @@
 		if (s.includes('bellingcat')) return 'osint';
 		if (s.includes('defense') || s.includes('war') || s.includes('military')) return 'defense';
 		if (s.includes('diplomat') || s.includes('monitor')) return 'regional';
-		if (s.includes('white house') || s.includes('fed') || s.includes('sec') || s.includes('dod')) return 'govt';
+		if (s.includes('white house') || s.includes('fed') || s.includes('sec') || s.includes('dod'))
+			return 'govt';
 		return 'think-tank';
 	}
 
@@ -48,9 +50,16 @@
 		};
 	}
 
+	const DEFAULT_PREVIEW = 5;
+	let expanded = $state(false);
+
 	const items = $derived(storeItems.map(transformToIntelItem));
 	const count = $derived(items.length);
 	const title = $derived(getPanelName('intel', $settings.locale));
+	const t = $derived(UI_TEXTS[$settings.locale].common);
+	const visibleItems = $derived(expanded ? items : items.slice(0, DEFAULT_PREVIEW));
+	const hasMore = $derived(items.length > DEFAULT_PREVIEW);
+	const moreCount = $derived(items.length - DEFAULT_PREVIEW);
 
 	type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -67,10 +76,10 @@
 
 <Panel id="intel" {title} {count} {loading} {error}>
 	{#if items.length === 0 && !loading && !error}
-		<div class="empty-state">No intel available</div>
+		<div class="empty-state">{emptyIntel}</div>
 	{:else}
 		<div class="intel-list">
-			{#each items as item (item.id)}
+			{#each visibleItems as item (item.id)}
 				<div class="intel-item" class:priority={item.isPriority}>
 					<div class="intel-header">
 						<span class="intel-source">{item.source}</span>
@@ -98,10 +107,42 @@
 				</div>
 			{/each}
 		</div>
+		{#if hasMore}
+			<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
+				{expanded ? t.showLess : t.showMore}
+				{#if !expanded}<span class="show-more-count">({moreCount})</span>{/if}
+			</button>
+		{/if}
 	{/if}
 </Panel>
 
 <style>
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
+	}
+
 	.intel-list {
 		display: flex;
 		flex-direction: column;

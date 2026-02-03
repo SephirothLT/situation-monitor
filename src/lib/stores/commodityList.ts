@@ -35,7 +35,9 @@ function save(symbols: string[]): void {
 	}
 }
 
-const symbolToConfig = new Map<string, CommodityConfig>(COMMODITY_OPTIONS.map((c) => [c.symbol, c]));
+const symbolToConfig = new Map<string, CommodityConfig>(
+	COMMODITY_OPTIONS.map((c) => [c.symbol, c])
+);
 
 function createCommodityListStore() {
 	const { subscribe, set, update } = writable<string[]>(loadSelectedSymbols());

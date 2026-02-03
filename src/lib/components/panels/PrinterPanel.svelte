@@ -21,11 +21,13 @@
 	const statusClass = $derived(isExpanding ? 'critical' : 'monitoring');
 	const title = $derived(getPanelName('printer', $settings.locale));
 	const fedLabel = $derived(UI_TEXTS[$settings.locale].panels.fedBalance);
+	const emptyPrinter = $derived(UI_TEXTS[$settings.locale].empty.printer);
+	const count = $derived(data ? 1 : 0);
 </script>
 
-<Panel id="printer" {title} {status} {statusClass} {loading} {error}>
+<Panel id="printer" {title} {count} {status} {statusClass} {loading} {error}>
 	{#if !data && !loading && !error}
-		<div class="empty-state">No Fed data available</div>
+		<div class="empty-state">{emptyPrinter}</div>
 	{:else if data}
 		<div class="printer-gauge">
 			<div class="printer-label">{fedLabel}</div>

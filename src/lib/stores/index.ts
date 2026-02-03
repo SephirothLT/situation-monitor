@@ -21,6 +21,7 @@ export {
 	matchCount,
 	hasMatches,
 	type MonitorMatch,
+	type MonitorMatchItem,
 	type MonitorsState
 } from './monitors';
 
@@ -90,3 +91,6 @@ export {
 	type FedIndicatorsState,
 	type FedNewsState
 } from './fed';
+
+// AI settings store (AI Insights: provider, API key, model)
+export { aiSettings, type AISettings } from './aiSettings';

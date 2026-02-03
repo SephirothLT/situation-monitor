@@ -21,6 +21,7 @@
 	const title = $derived(getPanelName('crypto', $settings.locale));
 	const selectedIds = $derived($cryptoList);
 	const t = $derived(UI_TEXTS[$settings.locale].crypto);
+	const emptyCrypto = $derived(UI_TEXTS[$settings.locale].empty.crypto);
 
 	const availableCoins = $derived(
 		CRYPTO_OPTIONS.filter(
@@ -28,7 +29,7 @@
 				!selectedIds.includes(opt.id) &&
 				(searchQuery === '' ||
 					opt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					opt.symbol.toLowerCase().includes(searchQuery.toLowerCase()) )
+					opt.symbol.toLowerCase().includes(searchQuery.toLowerCase()))
 		).slice(0, 30)
 	);
 
@@ -50,7 +51,7 @@
 
 <Panel id="crypto" {title} {count} {loading} {error}>
 	{#if items.length === 0 && !loading && !error}
-		<div class="empty-state">No crypto data available</div>
+		<div class="empty-state">{emptyCrypto}</div>
 	{:else}
 		<div class="crypto-list">
 			{#each items as coin (coin.id)}
@@ -116,11 +117,7 @@
 		/>
 		<div class="coin-options">
 			{#each availableCoins as opt (opt.id)}
-				<button
-					type="button"
-					class="coin-option"
-					onclick={() => handleAddCoin(opt.id)}
-				>
+				<button type="button" class="coin-option" onclick={() => handleAddCoin(opt.id)}>
 					<span class="coin-symbol">{opt.symbol}</span>
 					<span class="coin-name">{opt.name}</span>
 				</button>

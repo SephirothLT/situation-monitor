@@ -11,7 +11,10 @@ type Blockchain = 'AVAX' | 'BSC' | 'BTC' | 'ETH' | 'MATIC' | 'OP' | 'TRX';
 function inferBlockchain(address: string): Blockchain {
 	const trimmed = address.trim();
 	if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) return 'ETH';
-	if (/^bc1[a-zA-HJ-NP-Z0-9]{25,}$/.test(trimmed) || /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed))
+	if (
+		/^bc1[a-zA-HJ-NP-Z0-9]{25,}$/.test(trimmed) ||
+		/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)
+	)
 		return 'BTC';
 	if (/^T[a-zA-HJ-NP-Z0-9]{33}$/.test(trimmed)) return 'TRX';
 	if (trimmed.startsWith('0x')) return 'ETH';
@@ -60,7 +63,8 @@ export async function createWalletWatchAlert(
 		if (res.ok && typeof data.id === 'number') {
 			return { ok: true, id: data.id };
 		}
-		const msg = typeof data.message === 'string' ? data.message : res.statusText || 'Request failed';
+		const msg =
+			typeof data.message === 'string' ? data.message : res.statusText || 'Request failed';
 		return { ok: false, error: msg };
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
@@ -71,7 +75,10 @@ export async function createWalletWatchAlert(
 /**
  * Delete an alert condition by ID.
  */
-export async function deleteWalletAlert(apiKey: string, alertId: number): Promise<{ ok: boolean; error?: string }> {
+export async function deleteWalletAlert(
+	apiKey: string,
+	alertId: number
+): Promise<{ ok: boolean; error?: string }> {
 	const auth = btoa(`${apiKey}:`);
 	try {
 		const res = await fetch(`${BASE_URL}/alert-conditions/${alertId}`, {

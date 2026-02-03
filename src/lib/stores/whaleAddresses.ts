@@ -14,7 +14,8 @@ const MIN_LENGTH = 8;
 
 function getApiKey(): string | undefined {
 	if (typeof import.meta === 'undefined') return undefined;
-	return (import.meta as unknown as { env?: { VITE_WHALE_ALERT_API_KEY?: string } }).env?.VITE_WHALE_ALERT_API_KEY;
+	return (import.meta as unknown as { env?: { VITE_WHALE_ALERT_API_KEY?: string } }).env
+		?.VITE_WHALE_ALERT_API_KEY;
 }
 
 function loadAlertIds(): Record<string, number> {
@@ -43,7 +44,11 @@ function isValidAddress(addr: string): boolean {
 	const trimmed = addr.trim();
 	if (trimmed.length < MIN_LENGTH) return false;
 	// 0x (EVM), bc1 / 1 / 3 (Bitcoin), or base58-like
-	return /^0x[a-fA-F0-9]{10,}$/.test(trimmed) || /^[13bc][a-km-zA-HJ-NP-Z1-9]{25,}$/.test(trimmed) || trimmed.length >= MIN_LENGTH;
+	return (
+		/^0x[a-fA-F0-9]{10,}$/.test(trimmed) ||
+		/^[13bc][a-km-zA-HJ-NP-Z1-9]{25,}$/.test(trimmed) ||
+		trimmed.length >= MIN_LENGTH
+	);
 }
 
 function normalizeAddress(addr: string): string {
@@ -57,7 +62,9 @@ function loadAddresses(): string[] {
 		if (!raw) return [];
 		const parsed = JSON.parse(raw) as unknown;
 		if (!Array.isArray(parsed)) return [];
-		return parsed.filter((s): s is string => typeof s === 'string' && s.length >= MIN_LENGTH).slice(0, MAX_ADDRESSES);
+		return parsed
+			.filter((s): s is string => typeof s === 'string' && s.length >= MIN_LENGTH)
+			.slice(0, MAX_ADDRESSES);
 	} catch {
 		return [];
 	}
@@ -128,7 +135,9 @@ function createWhaleAddressesStore() {
 				saveAlertIds(ids);
 			}
 			update((list) => {
-				const next = list.filter((a) => normalizeAddress(a).toLowerCase() !== normalized.toLowerCase());
+				const next = list.filter(
+					(a) => normalizeAddress(a).toLowerCase() !== normalized.toLowerCase()
+				);
 				save(next);
 				return next;
 			});

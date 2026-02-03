@@ -33,3 +33,11 @@ export {
 	type MainCharacterEntry,
 	type MainCharacterResults
 } from './main-character';
+
+// AI module context (aggregate enabled panels for AI analysis)
+export {
+	buildAIContext,
+	getStructuredSummary,
+	type AIModuleContext,
+	type AIMessage
+} from './ai-context';

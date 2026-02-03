@@ -32,6 +32,8 @@
 	const count = $derived(matches.length);
 	const title = $derived(getPanelName('monitors', $settings.locale));
 	const t = $derived(UI_TEXTS[$settings.locale].monitors);
+	const panelsT = $derived(UI_TEXTS[$settings.locale].panels);
+	const emptyMonitors = $derived(UI_TEXTS[$settings.locale].empty.monitors);
 
 	function getMatchesForMonitor(monitorId: string): MonitorMatch[] {
 		return matches.filter((m) => m.monitor.id === monitorId).slice(0, 3);
@@ -42,14 +44,14 @@
 	<div class="monitors-content">
 		{#if monitors.length === 0 && !loading && !error}
 			<div class="empty-state">
-				<p>No monitors configured</p>
+				<p>{emptyMonitors}</p>
 				{#if onCreateMonitor}
 					<button class="create-btn" onclick={onCreateMonitor}>+ {t.createMonitor}</button>
 				{/if}
 			</div>
 		{:else}
 			<div class="monitors-header">
-				<span class="active-count">{activeMonitors.length} active</span>
+				<span class="active-count">{activeMonitors.length} {panelsT.activeCount}</span>
 				{#if onCreateMonitor}
 					<button class="add-btn" onclick={onCreateMonitor}>+</button>
 				{/if}
@@ -80,7 +82,11 @@
 									</button>
 								{/if}
 								{#if onEditMonitor}
-									<button class="action-btn" onclick={() => onEditMonitor?.(monitor)} title={t.edit}>
+									<button
+										class="action-btn"
+										onclick={() => onEditMonitor?.(monitor)}
+										title={t.edit}
+									>
 										✎
 									</button>
 								{/if}
@@ -115,18 +121,27 @@
 							<div class="monitor-matches">
 								{#each getMatchesForMonitor(monitor.id) as match}
 									<div class="match-item">
-										<a
-											href={match.item.link}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="match-title"
-										>
-											{match.item.title.length > 80
-												? match.item.title.substring(0, 80) + '...'
-												: match.item.title}
-										</a>
+										{#if match.item.link}
+											<a
+												href={match.item.link}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="match-title"
+											>
+												{match.item.title.length > 80
+													? match.item.title.substring(0, 80) + '...'
+													: match.item.title}
+											</a>
+										{:else}
+											<span class="match-title match-title-text">
+												{match.item.title.length > 80
+													? match.item.title.substring(0, 80) + '...'
+													: match.item.title}
+											</span>
+										{/if}
 										<div class="match-meta">
 											<span class="match-keyword">"{match.matchedKeywords.join(', ')}"</span>
+											<span class="match-source">{match.item.sourceLabel}</span>
 											<span class="match-time">{timeAgo(match.item.timestamp)}</span>
 										</div>
 									</div>
@@ -301,10 +316,24 @@
 		color: var(--accent);
 	}
 
+	.match-title-text {
+		display: block;
+		font-size: 0.55rem;
+		color: var(--text-primary);
+		line-height: 1.3;
+	}
+
 	.match-meta {
 		display: flex;
-		justify-content: space-between;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
 		margin-top: 0.1rem;
+	}
+
+	.match-source {
+		font-size: 0.5rem;
+		color: var(--text-dim);
 	}
 
 	.match-keyword {

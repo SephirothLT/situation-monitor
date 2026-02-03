@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { NewsItem } from '$lib/types';
 	import { timeAgo } from '$lib/utils';
+	import { settings } from '$lib/stores';
+	import { UI_TEXTS } from '$lib/config';
 
 	interface Props {
 		item: NewsItem;
@@ -17,6 +19,8 @@
 		showDescription = false,
 		compact = false
 	}: Props = $props();
+
+	const openInNewTabLabel = $derived(UI_TEXTS[$settings.locale].common.openInNewTab);
 </script>
 
 <div class="news-item" class:alert={showAlert && item.isAlert} class:compact>
@@ -29,7 +33,13 @@
 		</div>
 	{/if}
 
-	<a class="item-title" href={item.link} target="_blank" rel="noopener noreferrer">
+	<a
+		class="item-title"
+		href={item.link}
+		target="_blank"
+		rel="noopener noreferrer"
+		title={openInNewTabLabel}
+	>
 		{item.title}
 	</a>
 
@@ -49,6 +59,13 @@
 	.news-item {
 		padding: 0.5rem 0;
 		border-bottom: 1px solid var(--border);
+		transition: background 0.15s ease;
+	}
+
+	.news-item:hover {
+		background: var(--surface-hover);
+		margin: 0 -0.5rem;
+		padding: 0.5rem;
 	}
 
 	.news-item:last-child {

@@ -589,12 +589,15 @@
 	$effect(() => {
 		const locale = $settings.locale;
 		if (!mapGroup) return;
-		const types: Array<'oceans' | 'chokepoints' | 'hotspots'> = ['oceans', 'chokepoints', 'hotspots'];
+		const types: Array<'oceans' | 'chokepoints' | 'hotspots'> = [
+			'oceans',
+			'chokepoints',
+			'hotspots'
+		];
 		for (const type of types) {
 			mapGroup.selectAll(`text[data-place-type="${type}"]`).each(function (this: SVGTextElement) {
-				const el = this;
-				const key = el.getAttribute('data-place-key');
-				if (key) el.textContent = getMapPlaceName(locale, type, key);
+				const key = this.getAttribute('data-place-key');
+				if (key) this.textContent = getMapPlaceName(locale, type, key);
 			});
 		}
 	});
@@ -631,13 +634,16 @@
 		</div>
 		<div class="map-legend">
 			<div class="legend-item">
-				<span class="legend-dot high"></span> High
+				<span class="legend-dot high"></span>
+				{mapT.legendHigh}
 			</div>
 			<div class="legend-item">
-				<span class="legend-dot elevated"></span> Elevated
+				<span class="legend-dot elevated"></span>
+				{mapT.legendElevated}
 			</div>
 			<div class="legend-item">
-				<span class="legend-dot low"></span> Low
+				<span class="legend-dot low"></span>
+				{mapT.legendLow}
 			</div>
 		</div>
 	</div>

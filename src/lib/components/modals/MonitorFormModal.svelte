@@ -7,10 +7,11 @@
 	interface Props {
 		open: boolean;
 		onClose: () => void;
+		onSave?: () => void;
 		editMonitor?: CustomMonitor | null;
 	}
 
-	let { open = false, onClose, editMonitor = null }: Props = $props();
+	let { open = false, onClose, onSave, editMonitor = null }: Props = $props();
 
 	let name = $state('');
 	let keywords = $state('');
@@ -73,6 +74,7 @@
 			}
 		}
 
+		onSave?.();
 		onClose();
 	}
 
@@ -84,7 +86,12 @@
 	}
 </script>
 
-<Modal {open} title={editMonitor ? t.editMonitor : t.createMonitor} closeLabel={UI_TEXTS[$settings.locale].modal.close} {onClose}>
+<Modal
+	{open}
+	title={editMonitor ? t.editMonitor : t.createMonitor}
+	closeLabel={UI_TEXTS[$settings.locale].modal.close}
+	{onClose}
+>
 	<form class="monitor-form" onsubmit={handleSubmit}>
 		{#if error}
 			<div class="form-error">{error}</div>

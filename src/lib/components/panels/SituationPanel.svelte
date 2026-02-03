@@ -20,6 +20,16 @@
 	}
 
 	let { panelId, config, news = [], loading = false, error = null }: Props = $props();
+	let expanded = $state(false);
+
+	const DEFAULT_PREVIEW = 4;
+	const MAX_ITEMS = 8;
+	const visibleNews = $derived(
+		expanded ? news.slice(0, MAX_ITEMS) : news.slice(0, DEFAULT_PREVIEW)
+	);
+	const hasMore = $derived(news.length > DEFAULT_PREVIEW);
+	const moreCount = $derived(Math.min(news.length - DEFAULT_PREVIEW, MAX_ITEMS - DEFAULT_PREVIEW));
+	const t = $derived(UI_TEXTS[$settings.locale].common);
 
 	type ThreatLevelKey = 'critical' | 'elevated' | 'monitoring';
 
@@ -52,11 +62,14 @@
 
 	const threatLevel = $derived(calculateThreatLevel(news, config.criticalKeywords));
 	const threatStatusText = $derived(UI_TEXTS[$settings.locale].status[threatLevel.textKey]);
+	const emptySituation = $derived(UI_TEXTS[$settings.locale].empty.situation);
+	const count = $derived(news.length);
 </script>
 
 <Panel
 	id={panelId}
 	title={config.title}
+	{count}
 	status={threatStatusText}
 	statusClass={threatLevel.level}
 	{loading}
@@ -69,10 +82,10 @@
 		</div>
 
 		{#if news.length === 0 && !loading && !error}
-			<div class="empty-state">No recent news</div>
+			<div class="empty-state">{emptySituation}</div>
 		{:else}
 			<div class="situation-news">
-				{#each news.slice(0, 8) as item (item.id)}
+				{#each visibleNews as item (item.id)}
 					<div class="situation-item">
 						<a href={item.link} target="_blank" rel="noopener noreferrer" class="headline">
 							{item.title}
@@ -81,11 +94,43 @@
 					</div>
 				{/each}
 			</div>
+			{#if hasMore}
+				<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
+					{expanded ? t.showLess : t.showMore}
+					{#if !expanded}<span class="show-more-count">({moreCount})</span>{/if}
+				</button>
+			{/if}
 		{/if}
 	</div>
 </Panel>
 
 <style>
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
+	}
+
 	.situation-content {
 		display: flex;
 		flex-direction: column;

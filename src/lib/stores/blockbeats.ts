@@ -3,7 +3,11 @@
  */
 
 import { writable, get } from 'svelte/store';
-import { fetchBlockBeatsFlash, toBlockBeatsLang, type BlockBeatsFlashItem } from '$lib/api/blockbeats';
+import {
+	fetchBlockBeatsFlash,
+	toBlockBeatsLang,
+	type BlockBeatsFlashItem
+} from '$lib/api/blockbeats';
 
 interface BlockBeatsState {
 	items: BlockBeatsFlashItem[];
@@ -35,11 +39,18 @@ function createBlockBeatsStore() {
 			return get({ subscribe }).error;
 		},
 
-		async load(locale: 'zh' | 'en' = 'zh'): Promise<void> {
-			update((s) => ({ ...s, loading: true, error: null }));
+		/** @param silent - when true, do not set loading: true (avoids panel flash on background refresh) */
+		async load(locale: 'zh' | 'en' = 'zh', silent = false): Promise<void> {
+			if (!silent) update((s) => ({ ...s, loading: true, error: null }));
 			try {
 				const lang = toBlockBeatsLang(locale);
 				const items = await fetchBlockBeatsFlash(lang, 20, 1, 'push');
+				// Sort by create_time desc (newest first)
+				items.sort((a, b) => {
+					const ta = a.create_time ? new Date(a.create_time).getTime() : 0;
+					const tb = b.create_time ? new Date(b.create_time).getTime() : 0;
+					return tb - ta;
+				});
 				update((s) => ({ ...s, items, loading: false, error: null }));
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : String(e);

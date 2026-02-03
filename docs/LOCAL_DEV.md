@@ -20,10 +20,10 @@ npm install
 
 项目可在**无任何 API Key** 下运行，部分功能会降级或提示配置。
 
-| 变量 | 用途 | 获取方式 | 必填 |
-|------|------|----------|------|
-| `VITE_FINNHUB_API_KEY` | 股指/板块等市场数据 | [finnhub.io](https://finnhub.io/) 免费注册 | 否（无则市场相关受限） |
-| `VITE_FRED_API_KEY` | 美联储经济指标 | [FRED API](https://fred.stlouisfed.org/docs/api/api_key.html) 免费 | 否（无则 Fed 面板提示配置） |
+| 变量                   | 用途                | 获取方式                                                           | 必填                        |
+| ---------------------- | ------------------- | ------------------------------------------------------------------ | --------------------------- |
+| `VITE_FINNHUB_API_KEY` | 股指/板块等市场数据 | [finnhub.io](https://finnhub.io/) 免费注册                         | 否（无则市场相关受限）      |
+| `VITE_FRED_API_KEY`    | 美联储经济指标      | [FRED API](https://fred.stlouisfed.org/docs/api/api_key.html) 免费 | 否（无则 Fed 面板提示配置） |
 
 **本地配置步骤：**
 
@@ -77,20 +77,20 @@ npm run preview
 
 ### 2. 改什么、改哪里
 
-| 想改的内容 | 建议修改位置 |
-|------------|--------------|
-| 新闻源、分类 | `src/lib/config/feeds.ts` |
-| 告警词、地区/主题关键词 | `src/lib/config/keywords.ts` |
-| 相关性主题、叙事规则、来源类型 | `src/lib/config/analysis.ts` |
-| 面板列表、名称、优先级 | `src/lib/config/panels.ts` |
-| 地图热点、冲突区 | `src/lib/config/map.ts` |
-| 市场/API 基础配置 | `src/lib/config/api.ts`、`src/lib/config/markets.ts` |
-| 新闻/市场/其他数据拉取逻辑 | `src/lib/api/*.ts` |
-| 分析逻辑（相关/叙事/主角） | `src/lib/analysis/*.ts` |
-| 缓存、熔断、请求封装 | `src/lib/services/*.ts` |
-| 页面布局、展示哪些面板 | `src/routes/+page.svelte` |
-| 单个面板 UI/交互 | `src/lib/components/panels/*.svelte` |
-| 全局状态、刷新策略 | `src/lib/stores/*.ts` |
+| 想改的内容                     | 建议修改位置                                         |
+| ------------------------------ | ---------------------------------------------------- |
+| 新闻源、分类                   | `src/lib/config/feeds.ts`                            |
+| 告警词、地区/主题关键词        | `src/lib/config/keywords.ts`                         |
+| 相关性主题、叙事规则、来源类型 | `src/lib/config/analysis.ts`                         |
+| 面板列表、名称、优先级         | `src/lib/config/panels.ts`                           |
+| 地图热点、冲突区               | `src/lib/config/map.ts`                              |
+| 市场/API 基础配置              | `src/lib/config/api.ts`、`src/lib/config/markets.ts` |
+| 新闻/市场/其他数据拉取逻辑     | `src/lib/api/*.ts`                                   |
+| 分析逻辑（相关/叙事/主角）     | `src/lib/analysis/*.ts`                              |
+| 缓存、熔断、请求封装           | `src/lib/services/*.ts`                              |
+| 页面布局、展示哪些面板         | `src/routes/+page.svelte`                            |
+| 单个面板 UI/交互               | `src/lib/components/panels/*.svelte`                 |
+| 全局状态、刷新策略             | `src/lib/stores/*.ts`                                |
 
 ### 3. 改完后的自检
 
@@ -142,18 +142,18 @@ npm run test:e2e
 
 ## 六、常用命令速查
 
-| 命令 | 说明 |
-|------|------|
-| `npm run dev` | 开发服务器（localhost:5173），热更新 |
-| `npm run build` | 生产构建到 `build/` |
-| `npm run preview` | 预览生产构建（localhost:4173） |
-| `npm run check` | TypeScript 检查 |
-| `npm run check:watch` | 监听模式类型检查 |
-| `npm run lint` | 代码与格式检查 |
-| `npm run format` | Prettier 自动格式化 |
-| `npm run test` | Vitest 监听模式 |
-| `npm run test:unit` | 单元测试跑一次 |
-| `npm run test:e2e` | Playwright E2E（需先 preview） |
+| 命令                  | 说明                                 |
+| --------------------- | ------------------------------------ |
+| `npm run dev`         | 开发服务器（localhost:5173），热更新 |
+| `npm run build`       | 生产构建到 `build/`                  |
+| `npm run preview`     | 预览生产构建（localhost:4173）       |
+| `npm run check`       | TypeScript 检查                      |
+| `npm run check:watch` | 监听模式类型检查                     |
+| `npm run lint`        | 代码与格式检查                       |
+| `npm run format`      | Prettier 自动格式化                  |
+| `npm run test`        | Vitest 监听模式                      |
+| `npm run test:unit`   | 单元测试跑一次                       |
+| `npm run test:e2e`    | Playwright E2E（需先 preview）       |
 
 ---
 

@@ -26,29 +26,29 @@
 
 	.dashboard-grid {
 		column-count: 1;
-		column-gap: 0.5rem;
+		column-gap: 1rem;
 		max-width: 2000px;
 		margin: 0 auto;
 	}
 
 	.dashboard-grid > :global(*) {
 		break-inside: avoid;
-		margin-bottom: 0.5rem;
+		margin-bottom: 1rem;
 	}
 
-	@media (min-width: 600px) {
+	@media (min-width: 768px) {
 		.dashboard-grid {
 			column-count: 2;
 		}
 	}
 
-	@media (min-width: 900px) {
+	@media (min-width: 960px) {
 		.dashboard-grid {
 			column-count: 3;
 		}
 	}
 
-	@media (min-width: 1200px) {
+	@media (min-width: 1280px) {
 		.dashboard-grid {
 			column-count: 4;
 		}

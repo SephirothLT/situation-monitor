@@ -6,6 +6,7 @@ import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import {
 	PANELS,
+	PANEL_ORDER,
 	NON_DRAGGABLE_PANELS,
 	PRESETS,
 	ONBOARDING_STORAGE_KEY,
@@ -19,6 +20,9 @@ const STORAGE_KEYS = {
 	panels: 'situationMonitorPanels',
 	order: 'panelOrder',
 	sizes: 'panelSizes',
+	panelCollapsed: 'situationMonitorPanelCollapsed',
+	panelCollapseTouched: 'situationMonitorPanelCollapseTouched',
+	pinned: 'situationMonitorPinned',
 	locale: 'situationMonitorLocale',
 	theme: 'situationMonitorTheme'
 } as const;
@@ -30,6 +34,10 @@ export interface PanelSettings {
 	enabled: Record<PanelId, boolean>;
 	order: PanelId[];
 	sizes: Record<PanelId, { width?: number; height?: number }>;
+	panelCollapsed: Record<PanelId, boolean>;
+	/** User has explicitly toggled collapse for this panel - respect storedCollapsed even when hasData */
+	panelCollapseTouched: Record<PanelId, boolean>;
+	pinned: PanelId[];
 }
 
 export interface SettingsState extends PanelSettings {
@@ -38,14 +46,22 @@ export interface SettingsState extends PanelSettings {
 	initialized: boolean;
 }
 
-// Default settings
+// Default settings: priority 2/3 panels start collapsed for a cleaner first view
 function getDefaultSettings(): PanelSettings {
 	const allPanelIds = Object.keys(PANELS) as PanelId[];
 
 	return {
 		enabled: Object.fromEntries(allPanelIds.map((id) => [id, true])) as Record<PanelId, boolean>,
-		order: allPanelIds,
-		sizes: {} as Record<PanelId, { width?: number; height?: number }>
+		order: [...PANEL_ORDER],
+		sizes: {} as Record<PanelId, { width?: number; height?: number }>,
+		panelCollapsed: Object.fromEntries(
+			allPanelIds.map((id) => [
+				id,
+				(PANELS as Record<PanelId, { priority: number }>)[id].priority > 1
+			])
+		) as Record<PanelId, boolean>,
+		panelCollapseTouched: {} as Record<PanelId, boolean>,
+		pinned: []
 	};
 }
 
@@ -57,6 +73,9 @@ function loadFromStorage(): Partial<PanelSettings> & { locale?: Locale; theme?: 
 		const panels = localStorage.getItem(STORAGE_KEYS.panels);
 		const order = localStorage.getItem(STORAGE_KEYS.order);
 		const sizes = localStorage.getItem(STORAGE_KEYS.sizes);
+		const panelCollapsed = localStorage.getItem(STORAGE_KEYS.panelCollapsed);
+		const panelCollapseTouched = localStorage.getItem(STORAGE_KEYS.panelCollapseTouched);
+		const pinned = localStorage.getItem(STORAGE_KEYS.pinned);
 		const locale = localStorage.getItem(STORAGE_KEYS.locale) as Locale | null;
 		const theme = localStorage.getItem(STORAGE_KEYS.theme) as Theme | null;
 
@@ -64,6 +83,9 @@ function loadFromStorage(): Partial<PanelSettings> & { locale?: Locale; theme?: 
 			enabled: panels ? JSON.parse(panels) : undefined,
 			order: order ? JSON.parse(order) : undefined,
 			sizes: sizes ? JSON.parse(sizes) : undefined,
+			panelCollapsed: panelCollapsed ? JSON.parse(panelCollapsed) : undefined,
+			panelCollapseTouched: panelCollapseTouched ? JSON.parse(panelCollapseTouched) : undefined,
+			pinned: pinned ? JSON.parse(pinned) : undefined,
 			locale: locale === 'zh' || locale === 'en' ? locale : undefined,
 			theme: theme === 'dark' || theme === 'light' ? theme : undefined
 		};
@@ -84,6 +106,14 @@ function saveToStorage(key: keyof typeof STORAGE_KEYS, value: unknown): void {
 	}
 }
 
+// Merge saved order with PANEL_ORDER so new panels (e.g. aiInsights) appear for existing users
+function mergeOrder(savedOrder: PanelId[] | undefined): PanelId[] {
+	const order = savedOrder ?? [...PANEL_ORDER];
+	const missing = PANEL_ORDER.filter((id) => !order.includes(id));
+	if (missing.length === 0) return order;
+	return [...order, ...missing];
+}
+
 // Create the store
 function createSettingsStore() {
 	const defaults = getDefaultSettings();
@@ -91,8 +121,11 @@ function createSettingsStore() {
 
 	const initialState: SettingsState = {
 		enabled: { ...defaults.enabled, ...saved.enabled },
-		order: saved.order ?? defaults.order,
+		order: mergeOrder(saved.order),
 		sizes: { ...defaults.sizes, ...saved.sizes },
+		panelCollapsed: { ...defaults.panelCollapsed, ...saved.panelCollapsed },
+		panelCollapseTouched: { ...defaults.panelCollapseTouched, ...saved.panelCollapseTouched },
+		pinned: saved.pinned ?? defaults.pinned,
 		locale: saved.locale ?? 'zh',
 		theme: saved.theme ?? 'dark',
 		initialized: false
@@ -158,12 +191,55 @@ function createSettingsStore() {
 		},
 
 		/**
-		 * Update panel order (for drag-drop)
+		 * Toggle panel collapsed state (priority 2/3 panels start collapsed for a cleaner view).
+		 * Marks panel as "touched" so collapse is respected even when panel has data.
+		 */
+		togglePanelCollapse(panelId: PanelId) {
+			update((state) => {
+				const next = !(state.panelCollapsed[panelId] ?? false);
+				const newCollapsed = { ...state.panelCollapsed, [panelId]: next };
+				const newTouched = { ...state.panelCollapseTouched, [panelId]: true };
+				saveToStorage('panelCollapsed', newCollapsed);
+				saveToStorage('panelCollapseTouched', newTouched);
+				return { ...state, panelCollapsed: newCollapsed, panelCollapseTouched: newTouched };
+			});
+		},
+
+		/**
+		 * Toggle panel pinned (pin to top). Newly pinned goes to the very front, before existing pinned.
+		 */
+		togglePin(panelId: PanelId) {
+			update((state) => {
+				const idx = state.pinned.indexOf(panelId);
+				const newPinned =
+					idx === -1 ? [panelId, ...state.pinned] : state.pinned.filter((id) => id !== panelId);
+				let newOrder = state.order;
+				if (idx === -1) {
+					newOrder = [panelId, ...state.order.filter((id) => id !== panelId)];
+					saveToStorage('order', newOrder);
+				}
+				saveToStorage('pinned', newPinned);
+				return { ...state, pinned: newPinned, order: newOrder };
+			});
+		},
+
+		/**
+		 * Check if a panel is pinned
+		 */
+		isPinned(panelId: PanelId): boolean {
+			const state = get({ subscribe });
+			return state.pinned.includes(panelId);
+		},
+
+		/**
+		 * Update panel order (for drag-drop). Syncs pinned to match new order (pinned ids keep their new positions).
 		 */
 		updateOrder(newOrder: PanelId[]) {
 			update((state) => {
+				const newPinned = newOrder.filter((id) => state.pinned.includes(id));
 				saveToStorage('order', newOrder);
-				return { ...state, order: newOrder };
+				saveToStorage('pinned', newPinned);
+				return { ...state, order: newOrder, pinned: newPinned };
 			});
 		},
 
@@ -234,6 +310,9 @@ function createSettingsStore() {
 				localStorage.removeItem(STORAGE_KEYS.panels);
 				localStorage.removeItem(STORAGE_KEYS.order);
 				localStorage.removeItem(STORAGE_KEYS.sizes);
+				localStorage.removeItem(STORAGE_KEYS.panelCollapsed);
+				localStorage.removeItem(STORAGE_KEYS.panelCollapseTouched);
+				localStorage.removeItem(STORAGE_KEYS.pinned);
 			}
 			set({ ...defaults, locale: state.locale, theme: state.theme, initialized: true });
 		},

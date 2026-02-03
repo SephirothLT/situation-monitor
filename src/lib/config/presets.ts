@@ -61,7 +61,7 @@ export const PRESETS: Record<string, Preset> = {
 		name: '情报分析',
 		icon: '🔍',
 		description: '深度分析、模式与叙事追踪',
-		panels: ['map', 'intel', 'leaders', 'correlation', 'narrative', 'mainchar', 'politics']
+		panels: ['map', 'intel', 'leaders', 'correlation', 'narrative', 'aiInsights', 'mainchar', 'politics']
 	},
 	minimal: {
 		id: 'minimal',
@@ -100,6 +100,7 @@ export const PRESETS: Record<string, Preset> = {
 			'intel',
 			'correlation',
 			'narrative',
+			'aiInsights',
 			'fed',
 			'blockbeats'
 		]

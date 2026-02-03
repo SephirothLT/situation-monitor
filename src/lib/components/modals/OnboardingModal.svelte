@@ -33,9 +33,7 @@
 	<div class="modal-overlay">
 		<div class="modal onboarding-modal">
 			<div class="modal-header">
-				<button class="close-btn" onclick={handleClose} aria-label={t.skip}>
-					&times;
-				</button>
+				<button class="close-btn" onclick={handleClose} aria-label={t.skip}> &times; </button>
 				<h2>{t.welcome}</h2>
 				<p class="subtitle">{t.subtitle}</p>
 			</div>
@@ -48,6 +46,9 @@
 						<div class="preset-icon">{preset.icon}</div>
 						<div class="preset-name">{text.name}</div>
 						<div class="preset-description">{text.description}</div>
+						{#if text.audience}
+							<div class="preset-audience">{text.audience}</div>
+						{/if}
 						<div class="preset-panel-count">{preset.panels.length}{t.panelsCount}</div>
 					</button>
 				{/each}
@@ -167,6 +168,12 @@
 		color: var(--text-secondary);
 		line-height: 1.4;
 		flex: 1;
+	}
+
+	.preset-audience {
+		font-size: 0.65rem;
+		color: var(--text-muted);
+		font-style: italic;
 	}
 
 	.preset-panel-count {

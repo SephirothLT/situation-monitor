@@ -59,6 +59,7 @@
 
 	const title = $derived(getPanelName('fed', $settings.locale));
 	const t = $derived(UI_TEXTS[$settings.locale].fed);
+	const emptyFed = $derived(UI_TEXTS[$settings.locale].empty.fed);
 </script>
 
 <Panel id="fed" {title} count={newsState.items.length} {loading} {error}>
@@ -119,7 +120,7 @@
 	<!-- News Feed -->
 	<div class="news-section">
 		{#if newsState.items.length === 0 && !loading && !error}
-			<div class="empty-state">No Fed news available</div>
+			<div class="empty-state">{emptyFed}</div>
 		{:else}
 			<div class="fed-news-list">
 				{#each newsState.items as item (item.id)}

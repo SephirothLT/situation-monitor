@@ -5,7 +5,14 @@
  * Free tier: 60 calls/minute
  */
 
-import { INDICES, SECTORS, COMMODITIES, CRYPTO, type CryptoOption, type CommodityConfig } from '$lib/config/markets';
+import {
+	INDICES,
+	SECTORS,
+	COMMODITIES,
+	CRYPTO,
+	type CryptoOption,
+	type CommodityConfig
+} from '$lib/config/markets';
 import type { MarketItem, SectorPerformance, CryptoItem } from '$lib/types';
 import { fetchWithProxy, logger, FINNHUB_API_KEY, FINNHUB_BASE_URL } from '$lib/config/api';
 
@@ -123,7 +130,11 @@ export async function fetchCryptoPrices(coins?: CryptoOption[]): Promise<CryptoI
 		const direct = await fetch(coinGeckoUrl);
 		if (direct.ok) {
 			const data = (await direct.json()) as CoinGeckoPricesResponse;
-			if (data && typeof data === 'object' && (data.bitcoin || data.ethereum || Object.keys(data).length > 0)) {
+			if (
+				data &&
+				typeof data === 'object' &&
+				(data.bitcoin || data.ethereum || Object.keys(data).length > 0)
+			) {
 				return mapResponse(data);
 			}
 		}
@@ -197,8 +208,7 @@ export async function fetchIndices(): Promise<MarketItem[]> {
  * Fetch sector performance from Finnhub (using sector ETFs)
  */
 export async function fetchSectorPerformance(): Promise<SectorPerformance[]> {
-	const createEmptySectors = () =>
-		SECTORS.map((s) => createEmptySectorItem(s.symbol, s.name));
+	const createEmptySectors = () => SECTORS.map((s) => createEmptySectorItem(s.symbol, s.name));
 
 	if (!hasFinnhubApiKey()) {
 		logger.warn('Markets API', 'Finnhub API key not configured');
@@ -247,7 +257,9 @@ const COMMODITY_SYMBOL_MAP: Record<string, string> = {
  * Fetch commodities from Finnhub.
  * @param commodityConfigs - List to fetch (from commodityList.getSelectedConfig()). If omitted, uses COMMODITIES default.
  */
-export async function fetchCommodities(commodityConfigs?: CommodityConfig[]): Promise<MarketItem[]> {
+export async function fetchCommodities(
+	commodityConfigs?: CommodityConfig[]
+): Promise<MarketItem[]> {
 	const list = commodityConfigs && commodityConfigs.length > 0 ? commodityConfigs : COMMODITIES;
 	const createEmptyCommodities = () =>
 		list.map((c) => createEmptyMarketItem(c.symbol, c.name, 'commodity'));

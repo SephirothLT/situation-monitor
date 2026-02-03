@@ -13,12 +13,20 @@
 	--text-primary: #e8e8e8;
 	--text-secondary: #888;
 	--text-dim: #888;
-	--text-muted: #666;
+	--text-muted: #777;
 	--accent: #fff;
+	--accent-rgb: 255, 255, 255;
 	--red: #ff4444;
 	--green: #44ff88;
 	--yellow: #ffaa00;
 	--blue: #4488ff;
+	--danger: #ff4444;
+	--success: #44ff88;
+	--warning: #ffaa00;
+	--info: #4488ff;
+	--bg-secondary: #0f0f0f;
+	--bg-hover: rgba(255, 255, 255, 0.04);
+	--panel-hover: rgba(255, 255, 255, 0.04);
 }
 
 /* Light theme (white background) */
@@ -34,10 +42,18 @@
 	--text-dim: #555;
 	--text-muted: #777;
 	--accent: #1a1a1a;
+	--accent-rgb: 26, 26, 26;
 	--red: #c62828;
 	--green: #2e7d32;
 	--yellow: #f9a825;
 	--blue: #1565c0;
+	--danger: #c62828;
+	--success: #2e7d32;
+	--warning: #f9a825;
+	--info: #1565c0;
+	--bg-secondary: #f0f0f0;
+	--bg-hover: rgba(0, 0, 0, 0.04);
+	--panel-hover: rgba(0, 0, 0, 0.04);
 }
 
 /* Base styles */
@@ -91,6 +107,14 @@ a:hover {
 :focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
+}
+
+/* Shared empty state (panels use .empty-state for consistency) */
+.empty-state {
+	text-align: center;
+	color: var(--text-secondary);
+	font-size: 0.7rem;
+	padding: 1rem;
 }
 
 /* Utility classes that are hard to do in Tailwind */
@@ -156,4 +180,41 @@ a:hover {
 	pointer-events: none;
 	z-index: 100;
 	max-width: 300px;
+}
+
+/* Panel drag-and-drop: long-press header to reorder */
+.slot-wrapper {
+	position: relative;
+}
+
+.panel-slot.dragging {
+	opacity: 0.6;
+	transform: scale(0.98);
+	pointer-events: none;
+	transition: opacity 0.15s, transform 0.15s;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.drop-indicator {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	height: 3px;
+	background: var(--accent);
+	border-radius: 2px;
+	z-index: 10;
+	pointer-events: none;
+	box-shadow: 0 0 8px var(--accent);
+}
+
+.drop-indicator-wrapper {
+	position: relative;
+	min-height: 4px;
+	grid-column: 1 / -1;
+}
+
+.drop-indicator.drop-indicator-end {
+	top: auto;
+	bottom: 0;
 }

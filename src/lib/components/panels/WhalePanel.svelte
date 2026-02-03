@@ -13,7 +13,13 @@
 		onWhaleListChange?: () => void;
 	}
 
-	let { whales = [], balances = [], loading = false, error = null, onWhaleListChange }: Props = $props();
+	let {
+		whales = [],
+		balances = [],
+		loading = false,
+		error = null,
+		onWhaleListChange
+	}: Props = $props();
 
 	let addModalOpen = $state(false);
 	let addressInput = $state('');
@@ -93,7 +99,13 @@
 				{#each addresses as addr (addr)}
 					<span class="address-chip">
 						{#if addressExplorerUrl(addr)}
-							<a href={addressExplorerUrl(addr)!} target="_blank" rel="noopener noreferrer" class="addr-link addr-text" title={addr}>{truncateAddr(addr, 8, 6)}</a>
+							<a
+								href={addressExplorerUrl(addr)!}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="addr-link addr-text"
+								title={addr}>{truncateAddr(addr, 8, 6)}</a
+							>
 						{:else}
 							<code class="addr-text" title={addr}>{truncateAddr(addr, 8, 6)}</code>
 						{/if}
@@ -111,7 +123,12 @@
 			</div>
 		{/if}
 		{#if canAddMore}
-			<button type="button" class="add-addr-btn" title={t.addAddress} onclick={() => (addModalOpen = true)}>
+			<button
+				type="button"
+				class="add-addr-btn"
+				title={t.addAddress}
+				onclick={() => (addModalOpen = true)}
+			>
 				+ {t.addAddress}
 			</button>
 		{:else}
@@ -129,15 +146,27 @@
 						<div class="whale-main">
 							<div class="whale-header">
 								{#if addressExplorerUrl(bal.address)}
-									<a href={addressExplorerUrl(bal.address)!} target="_blank" rel="noopener noreferrer" class="addr-from addr-link" title={bal.address}>{truncateAddr(bal.address, 8, 6)}</a>
+									<a
+										href={addressExplorerUrl(bal.address)!}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="addr-from addr-link"
+										title={bal.address}>{truncateAddr(bal.address, 8, 6)}</a
+									>
 								{:else}
-									<span class="addr-from" title={bal.address}>{truncateAddr(bal.address, 8, 6)}</span>
+									<span class="addr-from" title={bal.address}
+										>{truncateAddr(bal.address, 8, 6)}</span
+									>
 								{/if}
 								<span class="whale-usd">{formatUSD(bal.totalUsd)}</span>
 							</div>
 							<div class="balance-coins">
 								{#each bal.coins as c (c.coin + bal.address)}
-									<span class="balance-coin-tag"><span class="whale-coin">{c.coin}</span> {formatAmount(c.amount)} <span class="whale-usd-sub">{formatUSD(c.usd)}</span></span>
+									<span class="balance-coin-tag"
+										><span class="whale-coin">{c.coin}</span>
+										{formatAmount(c.amount)}
+										<span class="whale-usd-sub">{formatUSD(c.usd)}</span></span
+									>
 								{/each}
 							</div>
 						</div>
@@ -159,39 +188,63 @@
 			<div class="empty-state">{t.emptyTx}</div>
 		{:else if whales.length > 0}
 			<div class="whale-list">
-			{#each whales as whale, i (whale.hash + i)}
-				<div class="whale-item">
-					<div class="whale-main">
-						<div class="whale-header">
-							<span class="whale-coin">{whale.coin}</span>
-							<span class="whale-amount">{formatAmount(whale.amount)} {whale.coin}</span>
-						</div>
-						<div class="whale-flow">
-							{#if whale.fromAddress}
-								{#if addressExplorerUrl(whale.fromAddress)}
-									<a href={addressExplorerUrl(whale.fromAddress)!} target="_blank" rel="noopener noreferrer" class="addr-from addr-link" title={whale.fromAddress}>{truncateAddr(whale.fromAddress)}</a>
-								{:else}
-									<span class="addr-from" title={whale.fromAddress}>{truncateAddr(whale.fromAddress)}</span>
+				{#each whales as whale, i (whale.hash + i)}
+					<div class="whale-item">
+						<div class="whale-main">
+							<div class="whale-header">
+								<span class="whale-coin">{whale.coin}</span>
+								<span class="whale-amount">{formatAmount(whale.amount)} {whale.coin}</span>
+							</div>
+							<div class="whale-flow">
+								{#if whale.fromAddress}
+									{#if addressExplorerUrl(whale.fromAddress)}
+										<a
+											href={addressExplorerUrl(whale.fromAddress)!}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="addr-from addr-link"
+											title={whale.fromAddress}>{truncateAddr(whale.fromAddress)}</a
+										>
+									{:else}
+										<span class="addr-from" title={whale.fromAddress}
+											>{truncateAddr(whale.fromAddress)}</span
+										>
+									{/if}
+									<span class="arrow">→</span>
+									{#if whale.toAddress && addressExplorerUrl(whale.toAddress)}
+										<a
+											href={addressExplorerUrl(whale.toAddress)!}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="addr-to addr-link"
+											title={whale.toAddress}>{truncateAddr(whale.toAddress)}</a
+										>
+									{:else}
+										<span class="addr-to" title={whale.toAddress ?? ''}
+											>{whale.toAddress ? truncateAddr(whale.toAddress) : '—'}</span
+										>
+									{/if}
 								{/if}
-								<span class="arrow">→</span>
-								{#if whale.toAddress && addressExplorerUrl(whale.toAddress)}
-									<a href={addressExplorerUrl(whale.toAddress)!} target="_blank" rel="noopener noreferrer" class="addr-to addr-link" title={whale.toAddress}>{truncateAddr(whale.toAddress)}</a>
+								<span class="whale-usd">{formatUSD(whale.usd)}</span>
+							</div>
+							<div class="whale-hash-row">
+								{#if txExplorerUrl(whale.hash)}
+									<a
+										href={txExplorerUrl(whale.hash)!}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="whale-hash addr-link"
+										title={whale.hash}>{truncateAddr(whale.hash, 10, 8)}</a
+									>
 								{:else}
-									<span class="addr-to" title={whale.toAddress ?? ''}>{whale.toAddress ? truncateAddr(whale.toAddress) : '—'}</span>
+									<span class="whale-hash" title={whale.hash}
+										>{truncateAddr(whale.hash, 10, 8)}</span
+									>
 								{/if}
-							{/if}
-							<span class="whale-usd">{formatUSD(whale.usd)}</span>
-						</div>
-						<div class="whale-hash-row">
-							{#if txExplorerUrl(whale.hash)}
-								<a href={txExplorerUrl(whale.hash)!} target="_blank" rel="noopener noreferrer" class="whale-hash addr-link" title={whale.hash}>{truncateAddr(whale.hash, 10, 8)}</a>
-							{:else}
-								<span class="whale-hash" title={whale.hash}>{truncateAddr(whale.hash, 10, 8)}</span>
-							{/if}
+							</div>
 						</div>
 					</div>
-				</div>
-			{/each}
+				{/each}
 			</div>
 		{/if}
 	</div>

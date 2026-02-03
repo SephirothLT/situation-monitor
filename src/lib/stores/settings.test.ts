@@ -138,4 +138,25 @@ describe('Settings Store', () => {
 		expect(enabled).toContain('map');
 		expect(enabled).toContain('politics');
 	});
+
+	it('should toggle pin and put newly pinned at front', async () => {
+		const { settings } = await import('./settings');
+
+		expect(get(settings).pinned).toEqual([]);
+		settings.togglePin('tech');
+		expect(get(settings).pinned).toEqual(['tech']);
+		settings.togglePin('finance');
+		expect(get(settings).pinned).toEqual(['finance', 'tech']);
+		settings.togglePin('tech');
+		expect(get(settings).pinned).toEqual(['finance']);
+	});
+
+	it('should set panelCollapseTouched when toggling collapse', async () => {
+		const { settings } = await import('./settings');
+
+		settings.togglePanelCollapse('commodities');
+		const state = get(settings);
+		expect(state.panelCollapseTouched['commodities']).toBe(true);
+		expect(state.panelCollapsed['commodities']).toBe(false);
+	});
 });

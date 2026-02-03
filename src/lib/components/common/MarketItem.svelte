@@ -59,6 +59,14 @@
 		align-items: center;
 		padding: 0.5rem 0;
 		border-bottom: 1px solid var(--border);
+		transition: background 0.15s ease;
+	}
+
+	.market-item:hover {
+		background: var(--surface-hover);
+		margin: 0 -0.5rem;
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
 	}
 
 	.market-item:last-child {

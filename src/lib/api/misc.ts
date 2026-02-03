@@ -68,7 +68,9 @@ const WHALE_TX_PER_ADDRESS = 15;
 const WEI_PER_ETH = 1e18;
 
 function mockHash(): string {
-	return '0x' + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+	return (
+		'0x' + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+	);
 }
 
 function isEthAddress(addr: string): boolean {
@@ -84,7 +86,8 @@ interface EtherscanTx {
 	timeStamp?: string;
 }
 
-const COINGECKO_ETH_PRICE_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd';
+const COINGECKO_ETH_PRICE_URL =
+	'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd';
 
 /** Fetch current ETH price (USD) from CoinGecko for whale USD conversion. Uses proxy fallback if direct fetch fails (e.g. CORS). */
 async function getEthPriceUsd(): Promise<number> {
@@ -101,7 +104,7 @@ async function getEthPriceUsd(): Promise<number> {
 		const data = (await res.json()) as { ethereum?: { usd?: number } };
 		const price = data?.ethereum?.usd;
 		return typeof price === 'number' && price > 0 ? price : 3000;
-	} catch (_) {
+	} catch {
 		return 3000;
 	}
 }
@@ -158,7 +161,7 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 			}
 			out.sort((a, b) => b.usd - a.usd);
 			if (out.length > 0) return out.slice(0, 25);
-		} catch (_) {
+		} catch {
 			// Fall through to mock
 		}
 	}
@@ -171,7 +174,9 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 			for (let i = 0; i < n; i++) {
 				const coin = WHALE_MOCK_COINS[Math.floor(Math.random() * WHALE_MOCK_COINS.length)];
 				const unit = WHALE_MOCK_USD_PER_UNIT[coin] ?? 3400;
-				const amount = Math.round((50 + Math.random() * 500) * (coin === 'BTC' ? 1 : coin === 'ETH' ? 10 : 100));
+				const amount = Math.round(
+					(50 + Math.random() * 500) * (coin === 'BTC' ? 1 : coin === 'ETH' ? 10 : 100)
+				);
 				const usd = Math.round(amount * unit * (0.9 + Math.random() * 0.2));
 				out.push({
 					coin,
@@ -179,7 +184,10 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 					usd,
 					hash: mockHash(),
 					fromAddress: fromAddr,
-					toAddress: '0x' + Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('') + '…'
+					toAddress:
+						'0x' +
+						Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('') +
+						'…'
 				});
 			}
 		}
@@ -237,13 +245,11 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 				out.push({
 					address: address.trim(),
 					totalUsd: usd,
-					coins: [
-						{ coin: 'ETH', amount: Math.round(amountEth * 10000) / 10000, usd }
-					]
+					coins: [{ coin: 'ETH', amount: Math.round(amountEth * 10000) / 10000, usd }]
 				});
 			}
 			if (out.length > 0) return out;
-		} catch (_) {
+		} catch {
 			// Fall through to mock
 		}
 	}
@@ -262,7 +268,10 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 			used.add(idx);
 			const coin = WHALE_MOCK_COINS[idx];
 			const unit = WHALE_MOCK_USD_PER_UNIT[coin] ?? 3400;
-			const amount = Math.round((10 + Math.random() * 200) * (coin === 'BTC' ? 0.1 : coin === 'ETH' ? 1 : 10) * 100) / 100;
+			const amount =
+				Math.round(
+					(10 + Math.random() * 200) * (coin === 'BTC' ? 0.1 : coin === 'ETH' ? 1 : 10) * 100
+				) / 100;
 			const usd = Math.round(amount * unit * (0.95 + Math.random() * 0.1));
 			coins.push({ coin, amount, usd });
 			totalUsd += usd;
@@ -287,11 +296,36 @@ interface SpendingByAwardItem {
 /** Fallback sample when API fails (e.g. CORS) */
 function getSampleContracts(): Contract[] {
 	return [
-		{ agency: 'DOD', description: 'Advanced radar systems development and integration', vendor: 'Raytheon', amount: 2500000000 },
-		{ agency: 'NASA', description: 'Artemis program lunar lander support services', vendor: 'SpaceX', amount: 1800000000 },
-		{ agency: 'DHS', description: 'Border security technology modernization', vendor: 'Palantir', amount: 450000000 },
-		{ agency: 'VA', description: 'Electronic health records system upgrade', vendor: 'Oracle Cerner', amount: 320000000 },
-		{ agency: 'DOE', description: 'Clean energy grid infrastructure', vendor: 'General Electric', amount: 275000000 }
+		{
+			agency: 'DOD',
+			description: 'Advanced radar systems development and integration',
+			vendor: 'Raytheon',
+			amount: 2500000000
+		},
+		{
+			agency: 'NASA',
+			description: 'Artemis program lunar lander support services',
+			vendor: 'SpaceX',
+			amount: 1800000000
+		},
+		{
+			agency: 'DHS',
+			description: 'Border security technology modernization',
+			vendor: 'Palantir',
+			amount: 450000000
+		},
+		{
+			agency: 'VA',
+			description: 'Electronic health records system upgrade',
+			vendor: 'Oracle Cerner',
+			amount: 320000000
+		},
+		{
+			agency: 'DOE',
+			description: 'Clean energy grid infrastructure',
+			vendor: 'General Electric',
+			amount: 275000000
+		}
 	];
 }
 
@@ -311,7 +345,14 @@ export async function fetchGovContracts(): Promise<Contract[]> {
 			award_type_codes: ['A', 'B', 'C', 'D'],
 			time_period: [{ start_date: startStr, end_date: endStr }]
 		},
-		fields: ['Award ID', 'Awarding Agency', 'Recipient Name', 'Description', 'Award Amount', 'Contract Award Type'],
+		fields: [
+			'Award ID',
+			'Awarding Agency',
+			'Recipient Name',
+			'Description',
+			'Award Amount',
+			'Contract Award Type'
+		],
 		sort: 'Award Amount',
 		order: 'desc',
 		limit: 10,
@@ -350,7 +391,7 @@ export async function fetchGovContracts(): Promise<Contract[]> {
 			});
 		}
 		return out.length > 0 ? out : getSampleContracts();
-	} catch (_) {
+	} catch {
 		return getSampleContracts();
 	}
 }
@@ -406,8 +447,18 @@ function getSampleLayoffs(): Layoff[] {
 	return [
 		{ company: 'Meta', count: 1200, title: 'Restructuring engineering teams', date: formatDate(2) },
 		{ company: 'Amazon', count: 850, title: 'AWS division optimization', date: formatDate(5) },
-		{ company: 'Salesforce', count: 700, title: 'Post-acquisition consolidation', date: formatDate(8) },
-		{ company: 'Intel', count: 1500, title: 'Manufacturing pivot restructure', date: formatDate(12) },
+		{
+			company: 'Salesforce',
+			count: 700,
+			title: 'Post-acquisition consolidation',
+			date: formatDate(8)
+		},
+		{
+			company: 'Intel',
+			count: 1500,
+			title: 'Manufacturing pivot restructure',
+			date: formatDate(12)
+		},
 		{ company: 'Snap', count: 500, title: 'Cost reduction initiative', date: formatDate(15) }
 	];
 }
@@ -426,16 +477,18 @@ interface IntellizenceLayoffItem {
 /** Extract company name from layoffs.fyi post title (e.g. "Scoop conducts layoff" -> Scoop). */
 function companyFromTitle(title: string): string {
 	const t = title.replace(/\s*\[.*?\]\s*/g, '').trim();
-	const match = t.match(/^([^–\-—:,]+?)\s+(?:conducts?|layoff|layoffs|layoff list|roundup|cuts?|to cut)/i)
-		?? t.match(/^([^–\-—:,]+)/);
+	const match =
+		t.match(/^([^–\-—:,]+?)\s+(?:conducts?|layoff|layoffs|layoff list|roundup|cuts?|to cut)/i) ??
+		t.match(/^([^–\-—:,]+)/);
 	return (match ? match[1].trim() : t.slice(0, 30)).slice(0, 50) || '—';
 }
 
 /** Try to parse laid-off count from excerpt text. */
 function countFromExcerpt(html: string): number {
 	const text = (html || '').replace(/<[^>]+>/g, ' ');
-	const m = text.match(/(\d{1,6})\s*(?:employees?|staff|workers?|jobs?|people)/i)
-		?? text.match(/(\d{1,6})\s*%\s*of\s*(?:employees?|staff|workforce)/i);
+	const m =
+		text.match(/(\d{1,6})\s*(?:employees?|staff|workers?|jobs?|people)/i) ??
+		text.match(/(\d{1,6})\s*%\s*of\s*(?:employees?|staff|workforce)/i);
 	return m ? Math.min(999999, parseInt(m[1], 10)) : 0;
 }
 
@@ -446,7 +499,7 @@ function countFromExcerpt(html: string): number {
 export async function fetchLayoffs(): Promise<Layoff[]> {
 	try {
 		return await fetchLayoffsInternal();
-	} catch (_) {
+	} catch {
 		return getSampleLayoffs();
 	}
 }
@@ -475,11 +528,11 @@ async function fetchLayoffsInternal(): Promise<Layoff[]> {
 			const raw = (await res.json()) as unknown;
 			const items: IntellizenceLayoffItem[] = Array.isArray(raw)
 				? raw
-				: (raw && typeof raw === 'object' && 'data' in (raw as object)
-						? ((raw as { data?: IntellizenceLayoffItem[] }).data ?? [])
-						: raw && typeof raw === 'object'
-							? [raw as IntellizenceLayoffItem]
-							: []);
+				: raw && typeof raw === 'object' && 'data' in (raw as object)
+					? ((raw as { data?: IntellizenceLayoffItem[] }).data ?? [])
+					: raw && typeof raw === 'object'
+						? [raw as IntellizenceLayoffItem]
+						: [];
 			const out: Layoff[] = [];
 			for (const r of items) {
 				const company = r.company?.name?.trim();
@@ -489,13 +542,15 @@ async function fetchLayoffsInternal(): Promise<Layoff[]> {
 				out.push({
 					company,
 					count: typeof r.count === 'number' && r.count >= 0 ? r.count : 0,
-					title: (r.title ?? r.layoffReason ?? 'Workforce reduction').trim().slice(0, 80) || 'Workforce reduction',
+					title:
+						(r.title ?? r.layoffReason ?? 'Workforce reduction').trim().slice(0, 80) ||
+						'Workforce reduction',
 					date: Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
 				});
 			}
 			out.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 			if (out.length > 0) return out.slice(0, LAYOFFS_MAX_ITEMS);
-		} catch (_) {
+		} catch {
 			// Fall through to layoffs.fyi
 		}
 	}
@@ -510,7 +565,10 @@ async function fetchLayoffsInternal(): Promise<Layoff[]> {
 			if (posts.length > 0) {
 				const out: Layoff[] = [];
 				for (const p of posts as LayoffsFyiPost[]) {
-					const rawTitle = (p.title?.rendered ?? '').replace(/&#8217;/g, "'").replace(/&amp;/g, '&').trim();
+					const rawTitle = (p.title?.rendered ?? '')
+						.replace(/&#8217;/g, "'")
+						.replace(/&amp;/g, '&')
+						.trim();
 					if (!rawTitle) continue;
 					const company = companyFromTitle(rawTitle);
 					const dateStr = p.date ?? '';
@@ -530,7 +588,7 @@ async function fetchLayoffsInternal(): Promise<Layoff[]> {
 			}
 		}
 		// res not ok (e.g. 500) or no posts – fall through to CSV without throwing
-	} catch (_) {
+	} catch {
 		// Fall through to CSV
 	}
 
@@ -573,7 +631,7 @@ async function fetchLayoffsInternal(): Promise<Layoff[]> {
 
 		out.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 		return out.slice(0, LAYOFFS_MAX_ITEMS);
-	} catch (_) {
+	} catch {
 		return getSampleLayoffs();
 	}
 }

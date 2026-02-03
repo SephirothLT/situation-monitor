@@ -9,11 +9,13 @@
 	const rankings = $derived(results.characters);
 	const title = $derived(getPanelName('mainchar', $settings.locale));
 	const t = $derived(UI_TEXTS[$settings.locale].panels);
+	const emptyMainChar = $derived(UI_TEXTS[$settings.locale].empty.mainChar);
+	const count = $derived(topChar ? 1 : 0);
 </script>
 
-<Panel id="mainchar" {title}>
+<Panel id="mainchar" {title} {count}>
 	{#if !topChar}
-		<div class="empty-state">No data yet</div>
+		<div class="empty-state">{emptyMainChar}</div>
 	{:else}
 		<div class="main-char-display">
 			<div class="main-char-label">{t.mainCharLabel}</div>

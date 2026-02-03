@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Panel, Badge } from '$lib/components/common';
 	import { settings } from '$lib/stores';
-	import { getPanelName } from '$lib/config';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 	import { analyzeNarratives } from '$lib/analysis/narrative';
 	import type { NewsItem } from '$lib/types';
 
@@ -15,6 +15,9 @@
 
 	const analysis = $derived(analyzeNarratives(news));
 	const title = $derived(getPanelName('narrative', $settings.locale));
+	const empty = $derived(UI_TEXTS[$settings.locale].empty);
+	const narrativeT = $derived(UI_TEXTS[$settings.locale].narrative);
+	const count = $derived(news.length > 0 && analysis ? 1 : 0);
 
 	function getStatusVariant(status: string): 'default' | 'warning' | 'danger' | 'success' | 'info' {
 		switch (status) {
@@ -45,9 +48,9 @@
 	}
 </script>
 
-<Panel id="narrative" {title} {loading} {error}>
+<Panel id="narrative" {title} {count} {loading} {error}>
 	{#if news.length === 0 && !loading && !error}
-		<div class="empty-state">Insufficient data for narrative analysis</div>
+		<div class="empty-state">{empty.narrative}</div>
 	{:else if analysis}
 		<div class="narrative-content">
 			{#if analysis.emergingFringe.length > 0}
@@ -63,7 +66,7 @@
 								/>
 							</div>
 							<div class="narrative-meta">
-								<span class="mention-count">{narrative.count} mentions</span>
+								<span class="mention-count">{narrative.count} {narrativeT.mentions}</span>
 							</div>
 							{#if narrative.sources.length > 0}
 								<div class="narrative-sources">
@@ -120,18 +123,18 @@
 									variant={getSeverityVariant(signal.severity)}
 								/>
 							</div>
-							<div class="disinfo-meta">{signal.count} mentions</div>
+							<div class="disinfo-meta">{signal.count} {narrativeT.mentions}</div>
 						</div>
 					{/each}
 				</div>
 			{/if}
 
 			{#if analysis.emergingFringe.length === 0 && analysis.fringeToMainstream.length === 0}
-				<div class="empty-state">No significant narratives detected</div>
+				<div class="empty-state">{empty.noNarratives}</div>
 			{/if}
 		</div>
 	{:else}
-		<div class="empty-state">No significant narratives detected</div>
+		<div class="empty-state">{empty.noNarratives}</div>
 	{/if}
 </Panel>
 

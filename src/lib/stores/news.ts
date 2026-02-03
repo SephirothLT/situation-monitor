@@ -103,10 +103,11 @@ function createNewsStore() {
 		},
 
 		/**
-		 * Set items for a category
+		 * Set items for a category (sorted by timestamp desc, newest first)
 		 */
 		setItems(category: NewsCategory, items: NewsItem[]) {
 			const enrichedItems = items.map(enrichNewsItem);
+			enrichedItems.sort((a, b) => b.timestamp - a.timestamp);
 
 			update((state) => ({
 				...state,
@@ -132,6 +133,8 @@ function createNewsStore() {
 				const existing = state.categories[category].items;
 				const existingIds = new Set(existing.map((i) => i.id));
 				const newItems = enrichedItems.filter((i) => !existingIds.has(i.id));
+				const combined = [...existing, ...newItems];
+				combined.sort((a, b) => b.timestamp - a.timestamp);
 
 				return {
 					...state,
@@ -139,7 +142,7 @@ function createNewsStore() {
 						...state.categories,
 						[category]: {
 							...state.categories[category],
-							items: [...existing, ...newItems],
+							items: combined,
 							loading: false,
 							error: null,
 							lastUpdated: Date.now()
@@ -221,12 +224,13 @@ export const govNews = derived(news, ($news) => $news.categories.gov);
 export const aiNews = derived(news, ($news) => $news.categories.ai);
 export const intelNews = derived(news, ($news) => $news.categories.intel);
 
-// Derived store for all news items (reactive)
+// Derived store for all news items (reactive, sorted by timestamp desc, newest first)
 export const allNewsItems = derived(news, ($news) => {
 	const allItems: NewsItem[] = [];
 	for (const category of NEWS_CATEGORIES) {
 		allItems.push(...$news.categories[category].items);
 	}
+	allItems.sort((a, b) => b.timestamp - a.timestamp);
 	return allItems;
 });
 

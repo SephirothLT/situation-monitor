@@ -23,6 +23,7 @@
 	const selectedSymbols = $derived($commodityList);
 	const t = $derived(UI_TEXTS[$settings.locale].commodityPicker);
 	const modalCloseLabel = $derived(UI_TEXTS[$settings.locale].modal.close);
+	const emptyCommodities = $derived(UI_TEXTS[$settings.locale].empty.commodities);
 
 	const availableOptions = $derived(
 		COMMODITY_OPTIONS.filter(
@@ -80,7 +81,7 @@
 	{error}
 >
 	{#if items.length === 0 && !loading && !error}
-		<div class="empty-state">No commodity data available</div>
+		<div class="empty-state">{emptyCommodities}</div>
 	{:else}
 		<div class="commodities-list">
 			{#each items as item (item.symbol)}

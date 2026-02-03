@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { Header, Dashboard } from '$lib/components/layout';
 	import { SettingsModal, MonitorFormModal, OnboardingModal } from '$lib/components/modals';
 	import {
@@ -22,7 +23,8 @@
 		WorldLeadersPanel,
 		PrinterPanel,
 		FedPanel,
-		BlockBeatsPanel
+		BlockBeatsPanel,
+		AIInsightsPanel
 	} from '$lib/components/panels';
 	import {
 		news,
@@ -36,8 +38,16 @@
 		blockbeats,
 		allNewsItems,
 		fedIndicators,
-		fedNews
+		fedNews,
+		indices,
+		crypto
 	} from '$lib/stores';
+	import {
+		buildAIContext,
+		analyzeCorrelations,
+		analyzeNarratives,
+		calculateMainCharacter
+	} from '$lib/analysis';
 	import {
 		fetchAllNews,
 		fetchAllMarkets,
@@ -52,7 +62,12 @@
 	} from '$lib/api';
 	import type { Prediction, WhaleTransaction, WhaleBalance, Contract, Layoff } from '$lib/api';
 	import type { CustomMonitor, WorldLeader } from '$lib/types';
-	import { getPanelName, getSituationConfig, type PanelId } from '$lib/config';
+	import {
+		getPanelName,
+		getSituationConfig,
+		NON_DRAGGABLE_PANELS,
+		type PanelId
+	} from '$lib/config';
 
 	// Modal state
 	let settingsOpen = $state(false);
@@ -71,11 +86,10 @@
 	let leaders = $state<WorldLeader[]>([]);
 	let leadersLoading = $state(false);
 
-	// Data fetching
-	async function loadNews() {
-		// Set loading for all categories
+	// Data fetching (silent = true: do not set loading state to avoid panel flash)
+	async function loadNews(silent = false) {
 		const categories = ['politics', 'tech', 'finance', 'gov', 'ai', 'intel'] as const;
-		categories.forEach((cat) => news.setLoading(cat, true));
+		if (!silent) categories.forEach((cat) => news.setLoading(cat, true));
 
 		try {
 			const data = await fetchAllNews();
@@ -101,18 +115,21 @@
 		}
 	}
 
-	async function loadMiscData() {
-		predictionsLoading = true;
-		predictionsError = null;
+	async function loadMiscData(silent = false) {
+		if (!silent) {
+			predictionsLoading = true;
+			predictionsError = null;
+		}
 		try {
 			const whaleAddrs = whaleAddresses.getAddresses();
-			const [predictionsData, whalesData, balancesData, contractsData, layoffsData] = await Promise.all([
-				fetchPolymarket(),
-				fetchWhaleTransactions(whaleAddrs),
-				fetchWhaleBalances(whaleAddrs),
-				fetchGovContracts(),
-				fetchLayoffs()
-			]);
+			const [predictionsData, whalesData, balancesData, contractsData, layoffsData] =
+				await Promise.all([
+					fetchPolymarket(),
+					fetchWhaleTransactions(whaleAddrs),
+					fetchWhaleBalances(whaleAddrs),
+					fetchGovContracts(),
+					fetchLayoffs()
+				]);
 			predictions = predictionsData;
 			whales = whalesData;
 			whaleBalances = balancesData;
@@ -139,7 +156,7 @@
 	}
 
 	async function loadFedData() {
-		if (!isPanelVisible('fed') && !isPanelVisible('printer')) return;
+		if (!isPanelVisible('fed') && !isPanelVisible('printer') && !isPanelVisible('monitors')) return;
 		fedIndicators.setLoading(true);
 		fedNews.setLoading(true);
 		try {
@@ -153,19 +170,29 @@
 		}
 	}
 
-	// Refresh handlers
-	async function loadBlockBeats() {
+	// Refresh handlers (silent = true: no loading state so panels don't flash)
+	async function loadBlockBeats(silent = false) {
 		if (!isPanelVisible('blockbeats')) return;
-		await blockbeats.load($settings.locale);
+		await blockbeats.load($settings.locale, silent);
 	}
 
-	async function handleRefresh() {
-		refresh.startRefresh();
+	/** @param silent - true = no global loading bar, no per-panel loading (used for auto-refresh) */
+	async function handleRefresh(silent = false) {
+		if (!silent) refresh.startRefresh();
 		try {
-			await Promise.all([loadNews(), loadMarkets(), loadMiscData(), loadBlockBeats()]);
-			refresh.endRefresh();
+			await Promise.all([
+				loadNews(silent),
+				loadMarkets(),
+				loadMiscData(silent),
+				loadBlockBeats(silent),
+				loadFedData()
+			]);
+			if (silent) refresh.updateLastRefresh();
+			else refresh.endRefresh();
 		} catch (error) {
-			refresh.endRefresh([String(error)]);
+			if (!silent) refresh.endRefresh([String(error)]);
+			// silent refresh on error: still update lastRefresh so next interval is correct
+			else refresh.updateLastRefresh();
 		}
 	}
 
@@ -186,11 +213,133 @@
 
 	function handleToggleMonitor(id: string) {
 		monitors.toggleMonitor(id);
+		runMonitorScan();
 	}
 
 	// Get panel visibility
 	function isPanelVisible(id: PanelId): boolean {
 		return $settings.enabled[id] !== false;
+	}
+
+	// Display order from settings (persisted; pin moves panel to front in order)
+	const displayOrder = $derived($settings.order.filter((id) => $settings.enabled[id]));
+
+	// AI Insights: aggregate context from enabled panels only
+	const aiContext = $derived(
+		buildAIContext({
+			enabled: $settings.enabled,
+			newsItems: $allNewsItems,
+			fedItems: $fedNews.items,
+			blockbeatsItems: $blockbeats.items ?? [],
+			predictions,
+			monitorMatches: $monitors.matches.map((m) => ({ item: m.item })),
+			correlationResults: analyzeCorrelations($allNewsItems),
+			narrativeResults: analyzeNarratives($allNewsItems),
+			mainCharacterResults: calculateMainCharacter($allNewsItems),
+			indicesSummary:
+				$indices.items.length > 0
+					? $indices.items
+							.slice(0, 3)
+							.map(
+								(i) =>
+									`${i.symbol} ${(i.changePercent ?? 0) >= 0 ? '+' : ''}${(i.changePercent ?? 0).toFixed(2)}%`
+							)
+							.join(' ')
+					: undefined,
+			cryptoSummary:
+				$crypto.items.length > 0
+					? $crypto.items
+							.slice(0, 3)
+							.map(
+								(c) =>
+									`${c.symbol?.toUpperCase() ?? c.id} ${(c.price_change_percentage_24h ?? 0) >= 0 ? '+' : ''}${(c.price_change_percentage_24h ?? 0).toFixed(2)}%`
+							)
+							.join(' ')
+					: undefined
+		})
+	);
+
+	// Drag reorder: long-press on panel header
+	let draggingPanelId = $state<PanelId | null>(null);
+	let dragOverIndex = $state<number | null>(null);
+
+	function handleDragStart(panelId: PanelId) {
+		draggingPanelId = panelId;
+		dragOverIndex = displayOrder.indexOf(panelId);
+		window.addEventListener('pointermove', handlePointerMove);
+		window.addEventListener('pointerup', handlePointerUp);
+	}
+
+	function handlePointerMove(e: PointerEvent) {
+		if (draggingPanelId === null) return;
+		const el = document.elementFromPoint(e.clientX, e.clientY);
+		const slotEl = el?.closest('[data-slot-index]');
+		if (!slotEl) {
+			dragOverIndex = null;
+			return;
+		}
+		const i = parseInt(slotEl.getAttribute('data-slot-index') ?? '0', 10);
+		const rect = slotEl.getBoundingClientRect();
+		dragOverIndex = e.clientY < rect.top + rect.height / 2 ? i : i + 1;
+	}
+
+	function handlePointerUp() {
+		if (draggingPanelId === null) return;
+		const visibleOrder = [...displayOrder];
+		const from = visibleOrder.indexOf(draggingPanelId);
+		const to = dragOverIndex ?? from;
+		if (from !== -1 && to !== from) {
+			visibleOrder.splice(from, 1);
+			visibleOrder.splice(Math.min(to, visibleOrder.length), 0, draggingPanelId);
+			const fullOrder = $settings.order;
+			const disabled = fullOrder.filter((id) => !$settings.enabled[id]);
+			settings.updateOrder([...visibleOrder, ...disabled]);
+		}
+		draggingPanelId = null;
+		dragOverIndex = null;
+		window.removeEventListener('pointermove', handlePointerMove);
+		window.removeEventListener('pointerup', handlePointerUp);
+	}
+
+	let longPressTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+
+	function handleSlotPointerDown(panelId: PanelId, e: PointerEvent) {
+		if (NON_DRAGGABLE_PANELS.includes(panelId)) return;
+		const slot = (e.target as HTMLElement).closest('[data-slot-index]');
+		if (!slot) return;
+		const header = slot.querySelector('.panel-header');
+		if (!header || !header.contains(e.target as Node)) return;
+		e.preventDefault();
+		longPressTimer = setTimeout(() => {
+			longPressTimer = null;
+			handleDragStart(panelId);
+		}, 400);
+	}
+
+	function handleSlotPointerUp() {
+		if (longPressTimer) {
+			clearTimeout(longPressTimer);
+			longPressTimer = null;
+		}
+	}
+
+	// Run monitor keyword scan when source data changes (do not depend on $monitors or effect will loop: scan updates store → $monitors changes → effect runs again)
+	$effect(() => {
+		const news = $allNewsItems;
+		const fed = $fedNews.items;
+		const bb = $blockbeats.items ?? [];
+		const poly = predictions;
+		monitors.scanAllSources(news, fed, bb, poly);
+	});
+
+	// Run scan with current data after user saves a monitor (so new/edited monitor takes effect immediately)
+	function runMonitorScan() {
+		monitors.scanAllSources(
+			get(allNewsItems),
+			get(fedNews).items,
+			get(blockbeats).items ?? [],
+			predictions
+		);
 	}
 
 	// Handle preset selection from onboarding
@@ -215,7 +364,7 @@
 			onboardingOpen = true;
 		}
 
-		// Load initial data and track as refresh
+		// Initial load: show loading bar once
 		async function initialLoad() {
 			refresh.startRefresh();
 			try {
@@ -233,7 +382,8 @@
 			}
 		}
 		initialLoad();
-		refresh.setupAutoRefresh(handleRefresh);
+		// Auto-refresh: silent (no global loading bar)
+		refresh.setupAutoRefresh(() => handleRefresh(true));
 
 		return () => {
 			refresh.stopAutoRefresh();
@@ -251,237 +401,227 @@
 
 	<main class="main-content">
 		<Dashboard>
-			<!-- Map Panel - Full width -->
-			{#if isPanelVisible('map')}
-				<div class="panel-slot map-slot">
-					<MapPanel monitors={$monitors.monitors} />
+			{#each displayOrder as panelId, i}
+				<div
+					class="slot-wrapper"
+					role="group"
+					aria-label="Panel slot"
+					data-slot-index={i}
+					data-panel-id={panelId}
+					onpointerdown={(e) => handleSlotPointerDown(panelId, e)}
+					onpointerup={handleSlotPointerUp}
+					onpointerleave={handleSlotPointerUp}
+					onpointercancel={handleSlotPointerUp}
+				>
+					{#if dragOverIndex === i}
+						<div class="drop-indicator" aria-hidden="true"></div>
+					{/if}
+					{#if panelId === 'map'}
+						<div class="panel-slot map-slot" class:dragging={draggingPanelId === panelId}>
+							<MapPanel monitors={$monitors.monitors} />
+						</div>
+					{:else if panelId === 'politics'}
+						<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<NewsPanel
+							category="politics"
+							panelId="politics"
+							title={getPanelName('politics', $settings.locale)}
+							onRetry={loadNews}
+						/>
+					</div>
+				{:else if panelId === 'tech'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<NewsPanel
+							category="tech"
+							panelId="tech"
+							title={getPanelName('tech', $settings.locale)}
+							onRetry={loadNews}
+						/>
+					</div>
+				{:else if panelId === 'finance'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<NewsPanel
+							category="finance"
+							panelId="finance"
+							title={getPanelName('finance', $settings.locale)}
+							onRetry={loadNews}
+						/>
+					</div>
+				{:else if panelId === 'gov'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<NewsPanel
+							category="gov"
+							panelId="gov"
+							title={getPanelName('gov', $settings.locale)}
+							onRetry={loadNews}
+						/>
+					</div>
+				{:else if panelId === 'ai'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<NewsPanel
+							category="ai"
+							panelId="ai"
+							title={getPanelName('ai', $settings.locale)}
+							onRetry={loadNews}
+						/>
+					</div>
+				{:else if panelId === 'markets'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<MarketsPanel onRetry={loadMarkets} />
+					</div>
+				{:else if panelId === 'heatmap'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<HeatmapPanel />
+					</div>
+				{:else if panelId === 'commodities'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<CommoditiesPanel onCommodityListChange={loadMarkets} />
+					</div>
+				{:else if panelId === 'crypto'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<CryptoPanel onCryptoListChange={loadMarkets} />
+					</div>
+				{:else if panelId === 'mainchar'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<MainCharPanel />
+					</div>
+				{:else if panelId === 'correlation'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<CorrelationPanel news={$allNewsItems} />
+					</div>
+				{:else if panelId === 'narrative'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<NarrativePanel news={$allNewsItems} />
+					</div>
+				{:else if panelId === 'aiInsights'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<AIInsightsPanel context={aiContext} />
+					</div>
+				{:else if panelId === 'intel'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<IntelPanel />
+					</div>
+				{:else if panelId === 'blockbeats'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<BlockBeatsPanel />
+					</div>
+				{:else if panelId === 'fed'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<FedPanel />
+					</div>
+				{:else if panelId === 'leaders'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<WorldLeadersPanel {leaders} loading={leadersLoading} />
+					</div>
+				{:else if panelId === 'venezuela'}
+					{@const sc = getSituationConfig('venezuela', $settings.locale)}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<SituationPanel
+							panelId="venezuela"
+							config={{
+								title: sc.title,
+								subtitle: sc.subtitle,
+								criticalKeywords: ['maduro', 'caracas', 'venezuela', 'guaido']
+							}}
+							news={$allNewsItems.filter(
+								(n) =>
+									n.title.toLowerCase().includes('venezuela') ||
+									n.title.toLowerCase().includes('maduro')
+							)}
+						/>
+					</div>
+				{:else if panelId === 'greenland'}
+					{@const sc = getSituationConfig('greenland', $settings.locale)}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<SituationPanel
+							panelId="greenland"
+							config={{
+								title: sc.title,
+								subtitle: sc.subtitle,
+								criticalKeywords: ['greenland', 'arctic', 'nuuk', 'denmark']
+							}}
+							news={$allNewsItems.filter(
+								(n) =>
+									n.title.toLowerCase().includes('greenland') ||
+									n.title.toLowerCase().includes('arctic')
+							)}
+						/>
+					</div>
+				{:else if panelId === 'iran'}
+					{@const sc = getSituationConfig('iran', $settings.locale)}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<SituationPanel
+							panelId="iran"
+							config={{
+								title: sc.title,
+								subtitle: sc.subtitle,
+								criticalKeywords: [
+									'protest',
+									'uprising',
+									'revolution',
+									'crackdown',
+									'killed',
+									'nuclear',
+									'strike',
+									'attack',
+									'irgc',
+									'khamenei'
+								]
+							}}
+							news={$allNewsItems.filter(
+								(n) =>
+									n.title.toLowerCase().includes('iran') ||
+									n.title.toLowerCase().includes('tehran') ||
+									n.title.toLowerCase().includes('irgc')
+							)}
+						/>
+					</div>
+				{:else if panelId === 'whales'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<WhalePanel {whales} balances={whaleBalances} onWhaleListChange={loadMiscData} />
+					</div>
+				{:else if panelId === 'polymarket'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<PolymarketPanel
+							{predictions}
+							loading={predictionsLoading}
+							error={predictionsError}
+							onRetry={loadMiscData}
+						/>
+					</div>
+				{:else if panelId === 'contracts'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<ContractsPanel {contracts} onRetry={loadMiscData} />
+					</div>
+				{:else if panelId === 'layoffs'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<LayoffsPanel {layoffs} onRetry={loadMiscData} />
+					</div>
+				{:else if panelId === 'printer'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<PrinterPanel
+							data={$fedIndicators.data?.printer ?? null}
+							loading={$fedIndicators.loading}
+							error={$fedIndicators.error}
+						/>
+					</div>
+				{:else if panelId === 'monitors'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<MonitorsPanel
+							monitors={$monitors.monitors}
+							matches={$monitors.matches}
+							onCreateMonitor={handleCreateMonitor}
+							onEditMonitor={handleEditMonitor}
+							onDeleteMonitor={handleDeleteMonitor}
+							onToggleMonitor={handleToggleMonitor}
+						/>
+					</div>
+				{/if}
 				</div>
-			{/if}
-
-			<!-- News Panels -->
-			{#if isPanelVisible('politics')}
-				<div class="panel-slot">
-					<NewsPanel category="politics" panelId="politics" title={getPanelName('politics', $settings.locale)} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('tech')}
-				<div class="panel-slot">
-					<NewsPanel category="tech" panelId="tech" title={getPanelName('tech', $settings.locale)} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('finance')}
-				<div class="panel-slot">
-					<NewsPanel category="finance" panelId="finance" title={getPanelName('finance', $settings.locale)} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('gov')}
-				<div class="panel-slot">
-					<NewsPanel category="gov" panelId="gov" title={getPanelName('gov', $settings.locale)} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('ai')}
-				<div class="panel-slot">
-					<NewsPanel category="ai" panelId="ai" title={getPanelName('ai', $settings.locale)} />
-				</div>
-			{/if}
-
-			<!-- Markets Panels -->
-			{#if isPanelVisible('markets')}
-				<div class="panel-slot">
-					<MarketsPanel />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('heatmap')}
-				<div class="panel-slot">
-					<HeatmapPanel />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('commodities')}
-				<div class="panel-slot">
-					<CommoditiesPanel onCommodityListChange={loadMarkets} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('crypto')}
-				<div class="panel-slot">
-					<CryptoPanel onCryptoListChange={loadMarkets} />
-				</div>
-			{/if}
-
-			<!-- Analysis Panels -->
-			{#if isPanelVisible('mainchar')}
-				<div class="panel-slot">
-					<MainCharPanel />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('correlation')}
-				<div class="panel-slot">
-					<CorrelationPanel news={$allNewsItems} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('narrative')}
-				<div class="panel-slot">
-					<NarrativePanel news={$allNewsItems} />
-				</div>
-			{/if}
-
-			<!-- Intel Panel -->
-			{#if isPanelVisible('intel')}
-				<div class="panel-slot">
-					<IntelPanel />
-				</div>
-			{/if}
-
-			<!-- BlockBeats Flash -->
-			{#if isPanelVisible('blockbeats')}
-				<div class="panel-slot">
-					<BlockBeatsPanel />
-				</div>
-			{/if}
-
-			<!-- Fed Panel -->
-			{#if isPanelVisible('fed')}
-				<div class="panel-slot">
-					<FedPanel />
-				</div>
-			{/if}
-
-			<!-- World Leaders Panel -->
-			{#if isPanelVisible('leaders')}
-				<div class="panel-slot">
-					<WorldLeadersPanel {leaders} loading={leadersLoading} />
-				</div>
-			{/if}
-
-			<!-- Situation Panels -->
-			{#if isPanelVisible('venezuela')}
-				{@const sc = getSituationConfig('venezuela', $settings.locale)}
-				<div class="panel-slot">
-					<SituationPanel
-						panelId="venezuela"
-						config={{
-							title: sc.title,
-							subtitle: sc.subtitle,
-							criticalKeywords: ['maduro', 'caracas', 'venezuela', 'guaido']
-						}}
-						news={$allNewsItems.filter(
-							(n) =>
-								n.title.toLowerCase().includes('venezuela') ||
-								n.title.toLowerCase().includes('maduro')
-						)}
-					/>
-				</div>
-			{/if}
-
-			{#if isPanelVisible('greenland')}
-				{@const sc = getSituationConfig('greenland', $settings.locale)}
-				<div class="panel-slot">
-					<SituationPanel
-						panelId="greenland"
-						config={{
-							title: sc.title,
-							subtitle: sc.subtitle,
-							criticalKeywords: ['greenland', 'arctic', 'nuuk', 'denmark']
-						}}
-						news={$allNewsItems.filter(
-							(n) =>
-								n.title.toLowerCase().includes('greenland') ||
-								n.title.toLowerCase().includes('arctic')
-						)}
-					/>
-				</div>
-			{/if}
-
-			{#if isPanelVisible('iran')}
-				{@const sc = getSituationConfig('iran', $settings.locale)}
-				<div class="panel-slot">
-					<SituationPanel
-						panelId="iran"
-						config={{
-							title: sc.title,
-							subtitle: sc.subtitle,
-							criticalKeywords: [
-								'protest',
-								'uprising',
-								'revolution',
-								'crackdown',
-								'killed',
-								'nuclear',
-								'strike',
-								'attack',
-								'irgc',
-								'khamenei'
-							]
-						}}
-						news={$allNewsItems.filter(
-							(n) =>
-								n.title.toLowerCase().includes('iran') ||
-								n.title.toLowerCase().includes('tehran') ||
-								n.title.toLowerCase().includes('irgc')
-						)}
-					/>
-				</div>
-			{/if}
-
-			<!-- Placeholder panels for additional data sources -->
-			{#if isPanelVisible('whales')}
-				<div class="panel-slot">
-					<WhalePanel {whales} balances={whaleBalances} onWhaleListChange={loadMiscData} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('polymarket')}
-				<div class="panel-slot">
-					<PolymarketPanel
-						predictions={predictions}
-						loading={predictionsLoading}
-						error={predictionsError}
-					/>
-				</div>
-			{/if}
-
-			{#if isPanelVisible('contracts')}
-				<div class="panel-slot">
-					<ContractsPanel {contracts} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('layoffs')}
-				<div class="panel-slot">
-					<LayoffsPanel {layoffs} />
-				</div>
-			{/if}
-
-			<!-- Money Printer Panel -->
-			{#if isPanelVisible('printer')}
-				<div class="panel-slot">
-					<PrinterPanel
-						data={$fedIndicators.data?.printer ?? null}
-						loading={$fedIndicators.loading}
-						error={$fedIndicators.error}
-					/>
-				</div>
-			{/if}
-
-			<!-- Custom Monitors (always last) -->
-			{#if isPanelVisible('monitors')}
-				<div class="panel-slot">
-					<MonitorsPanel
-						monitors={$monitors.monitors}
-						matches={$monitors.matches}
-						onCreateMonitor={handleCreateMonitor}
-						onEditMonitor={handleEditMonitor}
-						onDeleteMonitor={handleDeleteMonitor}
-						onToggleMonitor={handleToggleMonitor}
-					/>
+			{/each}
+			{#if dragOverIndex === displayOrder.length}
+				<div class="drop-indicator-wrapper">
+					<div class="drop-indicator drop-indicator-end" aria-hidden="true"></div>
 				</div>
 			{/if}
 		</Dashboard>
@@ -496,6 +636,7 @@
 	<MonitorFormModal
 		open={monitorFormOpen}
 		onClose={() => (monitorFormOpen = false)}
+		onSave={runMonitorScan}
 		editMonitor={editingMonitor}
 	/>
 	<OnboardingModal open={onboardingOpen} onSelectPreset={handleSelectPreset} />
@@ -511,18 +652,18 @@
 
 	.main-content {
 		flex: 1;
-		padding: 0.5rem;
+		padding: 1rem;
 		overflow-y: auto;
 	}
 
 	.map-slot {
 		column-span: all;
-		margin-bottom: 0.5rem;
+		margin-bottom: 1rem;
 	}
 
 	@media (max-width: 768px) {
 		.main-content {
-			padding: 0.25rem;
+			padding: 0.5rem;
 		}
 	}
 </style>

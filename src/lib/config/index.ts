@@ -6,6 +6,7 @@
 export {
 	PANELS,
 	NON_DRAGGABLE_PANELS,
+	PANEL_ORDER,
 	MAP_ZOOM_MIN,
 	MAP_ZOOM_MAX,
 	MAP_ZOOM_STEP,
@@ -83,10 +84,26 @@ export {
 } from './presets';
 
 // API configuration
-export { CORS_PROXY_URL, API_DELAYS, CACHE_TTLS, DEBUG, logger, FINNHUB_API_KEY, FINNHUB_BASE_URL } from './api';
+export {
+	CORS_PROXY_URL,
+	API_DELAYS,
+	CACHE_TTLS,
+	DEBUG,
+	logger,
+	FINNHUB_API_KEY,
+	FINNHUB_BASE_URL
+} from './api';
 
 // World leaders configuration
 export { WORLD_LEADERS } from './leaders';
+
+// AI providers (AI Insights)
+export {
+	AI_PROVIDERS,
+	getProvider,
+	type AIProviderId,
+	type AIProviderConfig
+} from './ai-providers';
 
 // Locale / i18n
 export {

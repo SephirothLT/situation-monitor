@@ -18,40 +18,78 @@
 </script>
 
 <header class="header">
-	<div class="header-left">
-		<h1 class="logo">{t.logo}</h1>
-	</div>
+	<div class="header-inner">
+		<div class="header-left">
+			<h1 class="logo">{t.logo}</h1>
+		</div>
 
-	<div class="header-center">
-		<div class="refresh-status">
-			{#if $isRefreshing}
-				<span class="status-text loading">{t.refreshing}</span>
-			{:else}
-				<span class="status-text">{lastRefreshText}</span>
-			{/if}
+		<div class="header-center">
+			<div class="refresh-status">
+				{#if $isRefreshing}
+					<span class="status-text loading" aria-live="polite">{t.refreshing}</span>
+				{:else}
+					<span class="status-text">{lastRefreshText}</span>
+				{/if}
+			</div>
+		</div>
+
+		<div class="header-right">
+			<button class="header-btn settings-btn" onclick={onSettingsClick} title={t.settings}>
+				<span class="btn-icon">⚙</span>
+				<span class="btn-label">{t.settings}</span>
+			</button>
 		</div>
 	</div>
-
-	<div class="header-right">
-		<button class="header-btn settings-btn" onclick={onSettingsClick} title={t.settings}>
-			<span class="btn-icon">⚙</span>
-			<span class="btn-label">{t.settings}</span>
-		</button>
-	</div>
+	{#if $isRefreshing}
+		<div
+			class="header-progress"
+			role="progressbar"
+			aria-valuenow={null}
+			aria-valuetext="Loading"
+			aria-label={t.refreshing}
+		></div>
+	{/if}
 </header>
 
 <style>
 	.header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 1rem;
 		background: var(--surface);
 		border-bottom: 1px solid var(--border);
 		position: sticky;
 		top: 0;
 		z-index: 100;
+	}
+
+	.header-inner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.5rem 1rem;
 		gap: 1rem;
+	}
+
+	.header-progress {
+		height: 3px;
+		background: var(--border);
+		overflow: hidden;
+	}
+
+	.header-progress::after {
+		content: '';
+		display: block;
+		height: 100%;
+		width: 40%;
+		background: var(--accent);
+		animation: header-progress 1.2s ease-in-out infinite;
+	}
+
+	@keyframes header-progress {
+		0% {
+			transform: translateX(-100%);
+		}
+		100% {
+			transform: translateX(350%);
+		}
 	}
 
 	.header-left {

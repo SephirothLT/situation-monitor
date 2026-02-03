@@ -33,7 +33,8 @@ const PANEL_NAMES: Record<Locale, Record<PanelId, string>> = {
 		correlation: '相关性引擎',
 		narrative: '叙事追踪',
 		fed: '美联储',
-		blockbeats: 'BlockBeats 快讯'
+		blockbeats: 'BlockBeats 快讯',
+		aiInsights: 'AI 分析'
 	},
 	en: {
 		map: 'Global Map',
@@ -61,36 +62,95 @@ const PANEL_NAMES: Record<Locale, Record<PanelId, string>> = {
 		correlation: 'Correlation Engine',
 		narrative: 'Narrative Tracker',
 		fed: 'Federal Reserve',
-		blockbeats: 'BlockBeats Flash'
+		blockbeats: 'BlockBeats Flash',
+		aiInsights: 'AI Insights'
 	}
 };
 
-const PRESET_TEXTS: Record<Locale, Record<string, { name: string; description: string }>> = {
+const PRESET_TEXTS: Record<
+	Locale,
+	Record<string, { name: string; description: string; audience?: string }>
+> = {
 	zh: {
-		'news-junkie': { name: '资讯优先', description: '政治、科技、财经要闻与主角分析' },
-		trader: { name: '交易员', description: '股票、加密货币、大宗与预测市场' },
-		geopolitics: { name: '地缘观察', description: '全球态势与区域热点' },
-		intel: { name: '情报分析', description: '深度分析、模式与叙事追踪' },
-		minimal: { name: '极简', description: '仅保留地图、新闻与市场' },
-		everything: { name: '全部', description: '启用所有面板' }
+		'news-junkie': {
+			name: '资讯优先',
+			description: '政治、科技、财经要闻与主角分析',
+			audience: '适合关注时政与财经的读者'
+		},
+		trader: {
+			name: '交易员',
+			description: '股票、加密货币、大宗与预测市场',
+			audience: '适合盯盘与市场决策'
+		},
+		geopolitics: {
+			name: '地缘观察',
+			description: '全球态势与区域热点',
+			audience: '适合关注地缘与冲突的读者'
+		},
+		intel: {
+			name: '情报分析',
+			description: '深度分析、模式与叙事追踪',
+			audience: '适合深度研究与叙事追踪'
+		},
+		minimal: {
+			name: '极简',
+			description: '仅保留地图、新闻与市场',
+			audience: '适合轻量浏览'
+		},
+		everything: {
+			name: '全部',
+			description: '启用所有面板',
+			audience: '适合全功能使用'
+		}
 	},
 	en: {
-		'news-junkie': { name: 'News Junkie', description: 'Breaking news across politics, tech, and finance' },
-		trader: { name: 'Trader', description: 'Market-focused: stocks, crypto, commodities' },
-		geopolitics: { name: 'Geopolitics Watcher', description: 'Global situation and regional hotspots' },
-		intel: { name: 'Intelligence Analyst', description: 'Deep analysis and narrative tracking' },
-		minimal: { name: 'Minimal', description: 'Just map, news, and markets' },
-		everything: { name: 'Everything', description: 'All panels enabled' }
+		'news-junkie': {
+			name: 'News Junkie',
+			description: 'Breaking news across politics, tech, and finance',
+			audience: 'Best for readers who follow politics and markets'
+		},
+		trader: {
+			name: 'Trader',
+			description: 'Market-focused: stocks, crypto, commodities',
+			audience: 'Best for day trading and market decisions'
+		},
+		geopolitics: {
+			name: 'Geopolitics Watcher',
+			description: 'Global situation and regional hotspots',
+			audience: 'Best for geopolitics and conflict watchers'
+		},
+		intel: {
+			name: 'Intelligence Analyst',
+			description: 'Deep analysis and narrative tracking',
+			audience: 'Best for deep research and narrative tracking'
+		},
+		minimal: {
+			name: 'Minimal',
+			description: 'Just map, news, and markets',
+			audience: 'Best for lightweight browsing'
+		},
+		everything: {
+			name: 'Everything',
+			description: 'All panels enabled',
+			audience: 'Best for full-feature use'
+		}
 	}
 };
 
 export const UI_TEXTS: Record<
 	Locale,
 	{
-		header: { logo: string; refreshing: string; lastUpdated: string; neverRefreshed: string; settings: string };
+		header: {
+			logo: string;
+			refreshing: string;
+			lastUpdated: string;
+			neverRefreshed: string;
+			settings: string;
+		};
 		modal: { close: string };
 		settings: {
 			title: string;
+			dashboard: string;
 			language: string;
 			background: string;
 			themeDark: string;
@@ -125,7 +185,53 @@ export const UI_TEXTS: Record<
 			keywordRequired: string;
 			maxMonitors: string;
 		};
-		common: { retry: string };
+		/** AI Insights: API key settings modal */
+		aiSettings: {
+			title: string;
+			provider: string;
+			apiKey: string;
+			apiKeyPlaceholder: string;
+			model: string;
+			modelOptional: string;
+			save: string;
+			cancel: string;
+			hint: string;
+		};
+		common: {
+			retry: string;
+			loading: string;
+			empty: string;
+			openInNewTab: string;
+			showMore: string;
+			showLess: string;
+			moreItems: string;
+		};
+		/** Empty state messages per panel/category */
+		empty: {
+			default: string;
+			news: string;
+			markets: string;
+			mainChar: string;
+			correlation: string;
+			narrative: string;
+			contracts: string;
+			layoffs: string;
+			polymarket: string;
+			fed: string;
+			leaders: string;
+			intel: string;
+			blockbeats: string;
+			heatmap: string;
+			crypto: string;
+			commodities: string;
+			monitors: string;
+			printer: string;
+			situation: string;
+			insufficientData: string;
+			noPatterns: string;
+			noNarratives: string;
+			aiInsights: string;
+		};
 		situation: {
 			venezuela: { title: string; subtitle: string };
 			greenland: { title: string; subtitle: string };
@@ -138,24 +244,79 @@ export const UI_TEXTS: Record<
 			mainCharMentions: string;
 			panelsCount: string;
 			closePanel: string;
+			togglePanel: string;
+			pinPanel: string;
+			unpinPanel: string;
+			activeCount: string;
 		};
-		map: { zoomIn: string; zoomOut: string; reset: string };
+		narrative: { mentions: string };
+		map: {
+			zoomIn: string;
+			zoomOut: string;
+			reset: string;
+			legendHigh: string;
+			legendElevated: string;
+			legendLow: string;
+		};
 		/** Map place names (oceans, chokepoints, hotspots) for i18n */
 		mapPlaces: {
 			oceans: Record<string, string>;
 			chokepoints: Record<string, string>;
 			hotspots: Record<string, string>;
 		};
-		monitors: { createMonitor: string; disable: string; enable: string; edit: string; delete: string };
+		monitors: {
+			createMonitor: string;
+			disable: string;
+			enable: string;
+			edit: string;
+			delete: string;
+		};
 		fed: { noApiKey: string };
-		crypto: { addCoin: string; addCoinModalTitle: string; remove: string; maxReached: string; searchPlaceholder: string; noMatch: string; allAdded: string };
-		whale: { addAddress: string; addAddressModalTitle: string; addressPlaceholder: string; invalidAddress: string; maxReached: string; watchedAddresses: string; remove: string; emptyHint: string; emptyTx: string; confirmAdd: string; balanceSection: string; transactionsSection: string; emptyBalance: string; productionHint: string };
+		crypto: {
+			addCoin: string;
+			addCoinModalTitle: string;
+			remove: string;
+			maxReached: string;
+			searchPlaceholder: string;
+			noMatch: string;
+			allAdded: string;
+		};
+		whale: {
+			addAddress: string;
+			addAddressModalTitle: string;
+			addressPlaceholder: string;
+			invalidAddress: string;
+			maxReached: string;
+			watchedAddresses: string;
+			remove: string;
+			emptyHint: string;
+			emptyTx: string;
+			confirmAdd: string;
+			balanceSection: string;
+			transactionsSection: string;
+			emptyBalance: string;
+			productionHint: string;
+		};
 		/** Panel header status labels (VIX + situation threat level) */
-		status: { highFear: string; elevated: string; low: string; critical: string; monitoring: string };
+		status: {
+			highFear: string;
+			elevated: string;
+			low: string;
+			critical: string;
+			monitoring: string;
+		};
 		/** Commodity display names by symbol (^VIX, GC=F, etc.) */
 		commodities: Record<string, string>;
 		/** Add-commodity modal / picker (大宗添加) */
-		commodityPicker: { addCommodity: string; addCommodityModalTitle: string; remove: string; maxReached: string; searchPlaceholder: string; noMatch: string; allAdded: string };
+		commodityPicker: {
+			addCommodity: string;
+			addCommodityModalTitle: string;
+			remove: string;
+			maxReached: string;
+			searchPlaceholder: string;
+			noMatch: string;
+			allAdded: string;
+		};
 	}
 > = {
 	zh: {
@@ -169,6 +330,7 @@ export const UI_TEXTS: Record<
 		modal: { close: '关闭' },
 		settings: {
 			title: '设置',
+			dashboard: '仪表盘',
 			language: '语言',
 			background: '背景颜色',
 			themeDark: '深色',
@@ -203,7 +365,51 @@ export const UI_TEXTS: Record<
 			keywordRequired: '请至少填写一个关键词',
 			maxMonitors: '监控数量已达上限（20）'
 		},
-		common: { retry: '重试' },
+		aiSettings: {
+			title: 'AI 总结 API 设置',
+			provider: '服务商',
+			apiKey: 'API Key',
+			apiKeyPlaceholder: 'sk-xxx（仅保存在本机，不会上传）',
+			model: '模型',
+			modelOptional: '可选，留空使用默认',
+			save: '保存',
+			cancel: '取消',
+			hint: '支持 DeepSeek、ChatGPT（OpenAI）等，填入对应 API Key 即可生成总结。'
+		},
+		common: {
+			retry: '重试',
+			loading: '加载中…',
+			empty: '暂无数据',
+			openInNewTab: '在新窗口打开',
+			showMore: '展开更多',
+			showLess: '收起',
+			moreItems: '还有 {n} 条'
+		},
+		empty: {
+			default: '暂无数据',
+			news: '暂无新闻',
+			markets: '暂无市场数据',
+			mainChar: '暂无数据',
+			correlation: '数据不足，无法分析',
+			narrative: '数据不足，无法进行叙事分析',
+			contracts: '暂无合同数据',
+			layoffs: '暂无近期裁员数据',
+			polymarket: '暂无预测数据',
+			fed: '暂无美联储新闻',
+			leaders: '暂无领导人数据',
+			intel: '暂无情报源',
+			blockbeats: '暂无快讯',
+			heatmap: '暂无板块数据',
+			crypto: '暂无加密货币数据',
+			commodities: '暂无大宗商品数据',
+			monitors: '暂无监控配置',
+			printer: '暂无美联储数据',
+			situation: '暂无相关新闻',
+			insufficientData: '数据不足',
+			noPatterns: '未检测到显著模式',
+			noNarratives: '未检测到显著叙事',
+			aiInsights: '请先在设置中启用要分析的模块'
+		},
 		situation: {
 			venezuela: { title: '委内瑞拉局势', subtitle: '人道危机与政局' },
 			greenland: { title: '格陵兰局势', subtitle: '北极地缘' },
@@ -218,9 +424,21 @@ export const UI_TEXTS: Record<
 			mainCharLabel: '今日主角',
 			mainCharMentions: '次出现在标题中',
 			panelsCount: '个面板',
-			closePanel: '关闭面板'
+			closePanel: '关闭面板',
+			togglePanel: '展开/收起面板',
+			pinPanel: '置顶',
+			unpinPanel: '取消置顶',
+			activeCount: '启用'
 		},
-		map: { zoomIn: '放大', zoomOut: '缩小', reset: '重置' },
+		narrative: { mentions: '次提及' },
+		map: {
+			zoomIn: '放大',
+			zoomOut: '缩小',
+			reset: '重置',
+			legendHigh: '高',
+			legendElevated: '升高',
+			legendLow: '低'
+		},
 		mapPlaces: {
 			oceans: {
 				ATLANTIC: '大西洋',
@@ -331,6 +549,7 @@ export const UI_TEXTS: Record<
 		modal: { close: 'Close' },
 		settings: {
 			title: 'Settings',
+			dashboard: 'Dashboard',
 			language: 'Language',
 			background: 'Background',
 			themeDark: 'Dark',
@@ -365,7 +584,51 @@ export const UI_TEXTS: Record<
 			keywordRequired: 'At least one keyword is required',
 			maxMonitors: 'Maximum number of monitors reached (20)'
 		},
-		common: { retry: 'Retry' },
+		aiSettings: {
+			title: 'AI Summary API Settings',
+			provider: 'Provider',
+			apiKey: 'API Key',
+			apiKeyPlaceholder: 'sk-xxx (stored locally only)',
+			model: 'Model',
+			modelOptional: 'Optional, leave blank for default',
+			save: 'Save',
+			cancel: 'Cancel',
+			hint: 'Supports DeepSeek, ChatGPT (OpenAI), etc. Enter the corresponding API Key to generate summaries.'
+		},
+		common: {
+			retry: 'Retry',
+			loading: 'Loading…',
+			empty: 'No data',
+			openInNewTab: 'Open in new tab',
+			showMore: 'Show more',
+			showLess: 'Show less',
+			moreItems: '{n} more'
+		},
+		empty: {
+			default: 'No data',
+			news: 'No news available',
+			markets: 'No market data available',
+			mainChar: 'No data yet',
+			correlation: 'Insufficient data for analysis',
+			narrative: 'Insufficient data for narrative analysis',
+			contracts: 'No contracts available',
+			layoffs: 'No recent layoffs data',
+			polymarket: 'No predictions available',
+			fed: 'No Fed news available',
+			leaders: 'No leaders data available',
+			intel: 'No intel available',
+			blockbeats: 'No flash news',
+			heatmap: 'No sector data available',
+			crypto: 'No crypto data available',
+			commodities: 'No commodity data available',
+			monitors: 'No monitors configured',
+			printer: 'No Fed data available',
+			situation: 'No recent news',
+			insufficientData: 'Insufficient data',
+			noPatterns: 'No significant patterns detected',
+			noNarratives: 'No significant narratives detected',
+			aiInsights: 'Enable panels in settings to analyze'
+		},
 		situation: {
 			venezuela: { title: 'Venezuela Watch', subtitle: 'Humanitarian crisis monitoring' },
 			greenland: { title: 'Greenland Watch', subtitle: 'Arctic geopolitics monitoring' },
@@ -380,9 +643,21 @@ export const UI_TEXTS: Record<
 			mainCharLabel: "Today's Main Character",
 			mainCharMentions: 'mentions in headlines',
 			panelsCount: ' panels',
-			closePanel: 'Close panel'
+			closePanel: 'Close panel',
+			togglePanel: 'Toggle panel',
+			pinPanel: 'Pin to top',
+			unpinPanel: 'Unpin',
+			activeCount: 'active'
 		},
-		map: { zoomIn: 'Zoom in', zoomOut: 'Zoom out', reset: 'Reset' },
+		narrative: { mentions: 'mentions' },
+		map: {
+			zoomIn: 'Zoom in',
+			zoomOut: 'Zoom out',
+			reset: 'Reset',
+			legendHigh: 'High',
+			legendElevated: 'Elevated',
+			legendLow: 'Low'
+		},
 		mapPlaces: {
 			oceans: {
 				ATLANTIC: 'Atlantic',
@@ -450,7 +725,8 @@ export const UI_TEXTS: Record<
 			balanceSection: 'Balance',
 			transactionsSection: 'Transactions',
 			emptyBalance: 'No balance',
-			productionHint: 'In production, set VITE_ETHERSCAN_API_KEY in your build platform (e.g. Vercel) to show real chain data'
+			productionHint:
+				'In production, set VITE_ETHERSCAN_API_KEY in your build platform (e.g. Vercel) to show real chain data'
 		},
 		status: {
 			highFear: 'HIGH FEAR',
@@ -491,7 +767,7 @@ export function getPanelName(panelId: PanelId, locale: Locale): string {
 export function getPresetText(
 	presetId: string,
 	locale: Locale
-): { name: string; description: string } {
+): { name: string; description: string; audience?: string } {
 	const t = PRESET_TEXTS[locale][presetId];
 	return t ?? { name: presetId, description: '' };
 }

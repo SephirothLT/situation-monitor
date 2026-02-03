@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
 	import { settings } from '$lib/stores';
-	import { getPanelName } from '$lib/config';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 
 	interface Prediction {
 		id: string;
@@ -15,12 +15,26 @@
 		predictions?: Prediction[];
 		loading?: boolean;
 		error?: string | null;
+		onRetry?: () => void;
 	}
 
-	let { predictions = [], loading = false, error = null }: Props = $props();
+	let { predictions = [], loading = false, error = null, onRetry }: Props = $props();
+
+	const DEFAULT_PREVIEW = 10;
+	const LOAD_MORE_STEP = 10;
+	let showCount = $state(DEFAULT_PREVIEW);
 
 	const count = $derived(predictions.length);
 	const title = $derived(getPanelName('polymarket', $settings.locale));
+	const emptyPolymarket = $derived(UI_TEXTS[$settings.locale].empty.polymarket);
+	const t = $derived(UI_TEXTS[$settings.locale].common);
+	const visiblePredictions = $derived(predictions.slice(0, Math.min(showCount, predictions.length)));
+	const hasMore = $derived(predictions.length > showCount);
+	const moreCount = $derived(Math.min(predictions.length - showCount, LOAD_MORE_STEP));
+
+	function loadMore() {
+		showCount += LOAD_MORE_STEP;
+	}
 
 	function formatVolume(v: number | string): string {
 		if (typeof v === 'string') {
@@ -36,12 +50,12 @@
 	}
 </script>
 
-<Panel id="polymarket" {title} {count} {loading} {error}>
+<Panel id="polymarket" {title} {count} {loading} {error} {onRetry}>
 	{#if predictions.length === 0 && !loading && !error}
-		<div class="empty-state">No predictions available</div>
+		<div class="empty-state">{emptyPolymarket}</div>
 	{:else}
 		<div class="predictions-list">
-			{#each predictions as pred (pred.id)}
+			{#each visiblePredictions as pred (pred.id)}
 				<div class="prediction-item">
 					<div class="prediction-info">
 						<div class="prediction-question">
@@ -61,6 +75,12 @@
 				</div>
 			{/each}
 		</div>
+		{#if hasMore}
+			<button type="button" class="show-more-btn" onclick={loadMore}>
+				{t.showMore}
+				<span class="show-more-count">(+{moreCount})</span>
+			</button>
+		{/if}
 	{/if}
 </Panel>
 
@@ -118,6 +138,29 @@
 		font-weight: 700;
 		color: var(--success);
 		font-variant-numeric: tabular-nums;
+	}
+
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
 	}
 
 	.empty-state {

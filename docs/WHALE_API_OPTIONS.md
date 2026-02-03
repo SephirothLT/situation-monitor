@@ -7,9 +7,9 @@
 ## 1. Whale Alert（官方）
 
 - **官网 / 文档**：https://developer.whale-alert.io/
-- **免费**：提供 **24 小时样本数据**（gzip JSON），非商用可用  
-  - 地址：https://developer.whale-alert.io/sample-data/  
-  - 链：Bitcoin, Ethereum, Solana, Polygon, Tron, Litecoin, Bitcoin Cash, Algorand  
+- **免费**：提供 **24 小时样本数据**（gzip JSON），非商用可用
+  - 地址：https://developer.whale-alert.io/sample-data/
+  - 链：Bitcoin, Ethereum, Solana, Polygon, Tron, Litecoin, Bitcoin Cash, Algorand
   - 另有 ≥1000 万美元的 alerts 样本（Bitcoin / Ethereum）
 - **付费**：REST API 需企业方案；Custom Alerts 约 $29.95/月
 

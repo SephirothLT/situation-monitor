@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
 	import { settings } from '$lib/stores';
-	import { getPanelName } from '$lib/config';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 	import type { WorldLeader } from '$lib/types';
 
 	interface Props {
@@ -14,6 +14,7 @@
 
 	const count = $derived(leaders.length);
 	const title = $derived(getPanelName('leaders', $settings.locale));
+	const emptyLeaders = $derived(UI_TEXTS[$settings.locale].empty.leaders);
 
 	function getActivityClass(newsCount: number): string {
 		if (newsCount >= 3) return 'high-activity';
@@ -24,7 +25,7 @@
 
 <Panel id="leaders" {title} {count} {loading} {error}>
 	{#if leaders.length === 0 && !loading && !error}
-		<div class="empty-state">No leaders data available</div>
+		<div class="empty-state">{emptyLeaders}</div>
 	{:else}
 		<div class="leaders-grid">
 			{#each leaders as leader (leader.id)}
@@ -57,7 +58,13 @@
 					{#if latestNews.length > 0}
 						<div class="leader-news">
 							{#each latestNews as news}
-								<a href={news.link} target="_blank" class="leader-news-item" title={news.title}>
+								<a
+									href={news.link}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="leader-news-item"
+									title={news.title}
+								>
 									{news.title.length > 60 ? news.title.substring(0, 60) + '...' : news.title}
 								</a>
 							{/each}

@@ -94,7 +94,7 @@
 		</section>
 
 		<section class="settings-section">
-			<h3 class="section-title">Dashboard</h3>
+			<h3 class="section-title">{t.settings.dashboard}</h3>
 			{#if onReconfigure}
 				<button class="reconfigure-btn" onclick={onReconfigure}>{t.settings.reconfigure}</button>
 				<p class="btn-hint">{t.settings.btnHint}</p>

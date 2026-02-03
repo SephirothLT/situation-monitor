@@ -33,7 +33,8 @@ export type PanelId =
 	| 'correlation'
 	| 'narrative'
 	| 'fed'
-	| 'blockbeats';
+	| 'blockbeats'
+	| 'aiInsights';
 
 export const PANELS: Record<PanelId, PanelConfig> = {
 	map: { name: '全球地图', priority: 1 },
@@ -61,10 +62,42 @@ export const PANELS: Record<PanelId, PanelConfig> = {
 	correlation: { name: '相关性引擎', priority: 1 },
 	narrative: { name: '叙事追踪', priority: 1 },
 	fed: { name: '美联储', priority: 1 },
-	blockbeats: { name: 'BlockBeats 快讯', priority: 2 }
+	blockbeats: { name: 'BlockBeats 快讯', priority: 2 },
+	aiInsights: { name: 'AI 分析', priority: 1 }
 };
 
 export const NON_DRAGGABLE_PANELS: PanelId[] = ['map'];
+
+/** Default panel order for dashboard (used when computing display order with pinned first) */
+export const PANEL_ORDER: PanelId[] = [
+	'map',
+	'politics',
+	'tech',
+	'finance',
+	'gov',
+	'ai',
+	'markets',
+	'heatmap',
+	'commodities',
+	'crypto',
+	'mainchar',
+	'correlation',
+	'narrative',
+	'aiInsights',
+	'intel',
+	'blockbeats',
+	'fed',
+	'leaders',
+	'venezuela',
+	'greenland',
+	'iran',
+	'whales',
+	'polymarket',
+	'contracts',
+	'layoffs',
+	'printer',
+	'monitors'
+];
 
 export const MAP_ZOOM_MIN = 1;
 export const MAP_ZOOM_MAX = 4;

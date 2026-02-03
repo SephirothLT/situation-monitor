@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Panel, Badge } from '$lib/components/common';
 	import { settings } from '$lib/stores';
-	import { getPanelName } from '$lib/config';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 	import { analyzeCorrelations } from '$lib/analysis/correlation';
 	import type { NewsItem } from '$lib/types';
 
@@ -15,6 +15,8 @@
 
 	const analysis = $derived(analyzeCorrelations(news));
 	const title = $derived(getPanelName('correlation', $settings.locale));
+	const empty = $derived(UI_TEXTS[$settings.locale].empty);
+	const count = $derived(news.length > 0 && analysis ? 1 : 0);
 
 	function getLevelVariant(level: string): 'default' | 'warning' | 'danger' | 'success' | 'info' {
 		switch (level) {
@@ -49,9 +51,9 @@
 	}
 </script>
 
-<Panel id="correlation" {title} {loading} {error}>
+<Panel id="correlation" {title} {count} {loading} {error}>
 	{#if news.length === 0 && !loading && !error}
-		<div class="empty-state">Insufficient data for analysis</div>
+		<div class="empty-state">{empty.correlation}</div>
 	{:else if analysis}
 		<div class="correlation-content">
 			{#if analysis.emergingPatterns.length > 0}
@@ -122,11 +124,11 @@
 			{/if}
 
 			{#if analysis.emergingPatterns.length === 0 && analysis.momentumSignals.length === 0}
-				<div class="empty-state">No significant patterns detected</div>
+				<div class="empty-state">{empty.noPatterns}</div>
 			{/if}
 		</div>
 	{:else}
-		<div class="empty-state">No significant patterns detected</div>
+		<div class="empty-state">{empty.noPatterns}</div>
 	{/if}
 </Panel>
 

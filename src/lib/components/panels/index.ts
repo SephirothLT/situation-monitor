@@ -19,3 +19,4 @@ export { default as MapPanel } from './MapPanel.svelte';
 export { default as WorldLeadersPanel } from './WorldLeadersPanel.svelte';
 export { default as FedPanel } from './FedPanel.svelte';
 export { default as BlockBeatsPanel } from './BlockBeatsPanel.svelte';
+export { default as AIInsightsPanel } from './AIInsightsPanel.svelte';

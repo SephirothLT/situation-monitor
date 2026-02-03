@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Panel } from '$lib/components/common';
 	import { settings } from '$lib/stores';
-	import { getPanelName } from '$lib/config';
+	import { getPanelName, UI_TEXTS } from '$lib/config';
 
 	interface Contract {
 		agency: string;
@@ -15,12 +15,20 @@
 		contracts?: Contract[];
 		loading?: boolean;
 		error?: string | null;
+		onRetry?: () => void;
 	}
 
-	let { contracts = [], loading = false, error = null }: Props = $props();
+	let { contracts = [], loading = false, error = null, onRetry }: Props = $props();
+	let expanded = $state(false);
 
+	const DEFAULT_PREVIEW = 5;
 	const count = $derived(contracts.length);
 	const title = $derived(getPanelName('contracts', $settings.locale));
+	const emptyContracts = $derived(UI_TEXTS[$settings.locale].empty.contracts);
+	const t = $derived(UI_TEXTS[$settings.locale].common);
+	const visibleList = $derived(expanded ? contracts : contracts.slice(0, DEFAULT_PREVIEW));
+	const hasMore = $derived(contracts.length > DEFAULT_PREVIEW);
+	const moreCount = $derived(contracts.length - DEFAULT_PREVIEW);
 
 	function formatValue(v: number): string {
 		if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
@@ -30,14 +38,19 @@
 	}
 </script>
 
-<Panel id="contracts" {title} {count} {loading} {error}>
+<Panel id="contracts" {title} {count} {loading} {error} {onRetry}>
 	{#if contracts.length === 0 && !loading && !error}
-		<div class="empty-state">No contracts available</div>
+		<div class="empty-state">{emptyContracts}</div>
 	{:else}
 		<div class="contracts-list">
-			{#each contracts as contract, i (contract.vendor + (contract.url ?? '') + i)}
+			{#each visibleList as contract, i (contract.vendor + (contract.url ?? '') + i)}
 				{#if contract.url}
-					<a href={contract.url} target="_blank" rel="noopener noreferrer" class="contract-item contract-link">
+					<a
+						href={contract.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="contract-item contract-link"
+					>
 						<div class="contract-agency">{contract.agency}</div>
 						<div class="contract-desc">
 							{contract.description.length > 100
@@ -65,6 +78,12 @@
 				{/if}
 			{/each}
 		</div>
+		{#if hasMore}
+			<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
+				{expanded ? t.showLess : t.showMore}
+				{#if !expanded}<span class="show-more-count">({moreCount})</span>{/if}
+			</button>
+		{/if}
 	{/if}
 </Panel>
 
@@ -129,6 +148,32 @@
 		font-weight: 600;
 		color: var(--success);
 		font-variant-numeric: tabular-nums;
+	}
+
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
 	}
 
 	.empty-state {
