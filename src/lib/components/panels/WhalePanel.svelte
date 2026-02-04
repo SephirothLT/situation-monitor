@@ -2,7 +2,8 @@
 	import { Panel } from '$lib/components/common';
 	import Modal from '$lib/components/modals/Modal.svelte';
 	import { settings, whaleAddresses } from '$lib/stores';
-	import { getPanelName, UI_TEXTS } from '$lib/config';
+import { getPanelName, UI_TEXTS } from '$lib/config';
+import { ETHERSCAN_API_KEY } from '$lib/config/api';
 	import type { WhaleTransaction, WhaleBalance } from '$lib/api';
 
 	interface Props {
@@ -248,7 +249,9 @@
 			</div>
 		{/if}
 	</div>
-	<p class="production-hint" title="VITE_ETHERSCAN_API_KEY">{t.productionHint}</p>
+	{#if t.productionHint && !ETHERSCAN_API_KEY.trim()}
+		<p class="production-hint" title="VITE_ETHERSCAN_API_KEY">{t.productionHint}</p>
+	{/if}
 </Panel>
 
 <Modal

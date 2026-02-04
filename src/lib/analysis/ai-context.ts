@@ -4,6 +4,7 @@
 
 import type { NewsItem } from '$lib/types';
 import type { PanelId } from '$lib/config/panels';
+import type { Locale } from '$lib/config';
 import type { CorrelationResults } from './correlation';
 import type { NarrativeResults } from './narrative';
 import type { MainCharacterResults } from './main-character';
@@ -166,55 +167,77 @@ export function buildAIContext(params: {
 /**
  * Generate a short rule-based summary from context (for display before LLM is wired)
  */
-export function getStructuredSummary(context: AIModuleContext): string[] {
+export function getStructuredSummary(context: AIModuleContext, locale: Locale = 'zh'): string[] {
 	const bullets: string[] = [];
+	const isZh = locale === 'zh';
+	const text = {
+		aggregate: isZh ? '已聚合 {panels} 个模块、{messages} 条消息' : 'Aggregated {panels} panels, {messages} messages',
+		alerts: isZh ? '告警/优先：{n} 条' : 'Alerts/Priority: {n}',
+		correlation: isZh ? '相关性：{topics} 等主题热度上升' : 'Correlation: rising interest in {topics}',
+		momentum: isZh ? '动量：{topics} 激增' : 'Momentum: {topics} surging',
+		mainCharacter: isZh ? '主角：{name} 提及最多' : 'Main character: {name} most mentioned',
+		narrative:
+			isZh ? '叙事：存在边缘→主流或涉假信息信号，建议关注' : 'Narratives: fringe→mainstream or disinfo signals detected',
+		market: isZh ? '市场：{text}' : 'Markets: {text}',
+		crypto: isZh ? '加密：{text}' : 'Crypto: {text}',
+		monitor: isZh ? '监控匹配：{n} 条' : 'Monitor matches: {n}',
+		polymarket: isZh ? 'Polymarket：{n} 个预测市场' : 'Polymarket: {n} markets'
+	};
 
 	// Always show at least one line so "综合摘要" and "生成总结" are visible
-	bullets.push(`已聚合 ${context.enabledPanelIds.length} 个模块、${context.messageCount} 条消息`);
+	bullets.push(
+		text.aggregate
+			.replace('{panels}', String(context.enabledPanelIds.length))
+			.replace('{messages}', String(context.messageCount))
+	);
 	if (context.messageCount === 0) {
 		return bullets;
 	}
 	if (context.alertsCount > 0) {
-		bullets.push(`告警/优先：${context.alertsCount} 条`);
+		bullets.push(text.alerts.replace('{n}', String(context.alertsCount)));
 	}
 
 	if (context.correlationSummary) {
 		const { emergingPatterns, momentumSignals } = context.correlationSummary;
 		if (emergingPatterns.length > 0) {
 			const top = emergingPatterns.slice(0, 2).map((p) => p.name).join('、');
-			bullets.push(`相关性：${top} 等主题热度上升`);
+			bullets.push(text.correlation.replace('{topics}', top));
 		}
 		if (momentumSignals.length > 0) {
 			const surging = momentumSignals.filter((s) => s.momentum === 'surging');
 			if (surging.length > 0) {
-				bullets.push(`动量：${surging.map((s) => s.name).join('、')} 激增`);
+				bullets.push(
+					text.momentum.replace('{topics}', surging.map((s) => s.name).join(isZh ? '、' : ', '))
+				);
 			}
 		}
 	}
 
 	if (context.mainCharacterSummary?.topCharacter) {
-		bullets.push(`主角：${context.mainCharacterSummary.topCharacter.name} 提及最多`);
+		bullets.push(
+			text.mainCharacter.replace('{name}', context.mainCharacterSummary.topCharacter.name)
+		);
 	}
 
 	if (context.narrativeSummary) {
 		const { fringeToMainstream, disinfoSignals } = context.narrativeSummary;
 		if (fringeToMainstream.length > 0 || disinfoSignals.length > 0) {
-			bullets.push('叙事：存在边缘→主流或涉假信息信号，建议关注');
+			bullets.push(text.narrative);
 		}
 	}
 
 	if (context.marketOneLiner) {
-		bullets.push(`市场：${context.marketOneLiner}`);
+		bullets.push(text.market.replace('{text}', context.marketOneLiner));
 	}
 	if (context.cryptoOneLiner) {
-		bullets.push(`加密：${context.cryptoOneLiner}`);
+		bullets.push(text.crypto.replace('{text}', context.cryptoOneLiner));
 	}
 
 	if (context.monitorMatchCount > 0) {
-		bullets.push(`监控匹配：${context.monitorMatchCount} 条`);
+		bullets.push(text.monitor.replace('{n}', String(context.monitorMatchCount)));
 	}
 	if (context.polymarketCount > 0) {
-		bullets.push(`Polymarket：${context.polymarketCount} 个预测市场`);
+		bullets.push(text.polymarket.replace('{n}', String(context.polymarketCount)));
 	}
 
 	return bullets;

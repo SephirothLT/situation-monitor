@@ -197,6 +197,22 @@ export const UI_TEXTS: Record<
 			cancel: string;
 			hint: string;
 		};
+		/** AI Insights panel strings */
+		aiInsights: {
+			settingsLabel: string;
+			statsEnabledPanels: string;
+			statsMessages: string;
+			statsAlerts: string;
+			summaryTitle: string;
+			aiSummaryTitle: string;
+			generating: string;
+			retry: string;
+			regenerate: string;
+			generate: string;
+			placeholderNeedData: string;
+			placeholderNeedKey: string;
+			requestFailed: string;
+		};
 		common: {
 			retry: string;
 			loading: string;
@@ -261,6 +277,20 @@ export const UI_TEXTS: Record<
 			pinPanel: string;
 			unpinPanel: string;
 			activeCount: string;
+		};
+		contracts: {
+			billion: string;
+			million: string;
+			thousand: string;
+		};
+		correlation: {
+			emergingPatterns: string;
+			momentumSignals: string;
+			crossSourceLinks: string;
+			predictiveSignals: string;
+			items: string;
+			sources: string;
+			confidence: string;
 		};
 		narrative: { mentions: string };
 		map: {
@@ -411,6 +441,23 @@ export const UI_TEXTS: Record<
 			cancel: '取消',
 			hint: '支持 DeepSeek、ChatGPT（OpenAI）等，填入对应 API Key 即可生成总结。'
 		},
+		aiInsights: {
+			settingsLabel: 'AI API 设置',
+			statsEnabledPanels: '已启用 {n} 个模块',
+			statsMessages: '{n} 条消息',
+			statsAlerts: '{n} 条告警',
+			summaryTitle: '综合摘要',
+			aiSummaryTitle: 'AI 总结',
+			generating: '正在生成…',
+			retry: '重试',
+			regenerate: '重新生成',
+			generate: '生成总结',
+			placeholderNeedData: '请先启用要分析的模块并等待数据加载',
+			placeholderNeedKey:
+				'点击右上角设置按钮填入 API Key（支持 DeepSeek、ChatGPT 等），或在 .env 中配置 VITE_AI_API_KEY。',
+			requestFailed:
+				'请求失败（可能是跨域）。请用本地代理或后端转发 DeepSeek API，或使用 npm run dev 通过 SvelteKit 服务端转发。'
+		},
 		common: {
 			retry: '重试',
 			loading: '加载中…',
@@ -518,6 +565,20 @@ export const UI_TEXTS: Record<
 			unpinPanel: '取消置顶',
 			activeCount: '启用'
 		},
+		contracts: {
+			billion: '亿',
+			million: '百万',
+			thousand: '千'
+		},
+		correlation: {
+			emergingPatterns: '新出现的模式',
+			momentumSignals: '动量信号',
+			crossSourceLinks: '跨来源关联',
+			predictiveSignals: '预测信号',
+			items: '{n} 条',
+			sources: '{n} 个来源',
+			confidence: '置信度'
+		},
 		narrative: { mentions: '次提及' },
 		map: {
 			zoomIn: '放大',
@@ -598,7 +659,8 @@ export const UI_TEXTS: Record<
 			balanceSection: '余额',
 			transactionsSection: '交易',
 			emptyBalance: '暂无余额',
-			productionHint: ''
+			productionHint:
+				'生产环境请在部署平台设置 VITE_ETHERSCAN_API_KEY（如 Vercel），以显示真实链上数据。'
 		},
 		status: {
 			highFear: '高恐慌',
@@ -703,6 +765,23 @@ export const UI_TEXTS: Record<
 			save: 'Save',
 			cancel: 'Cancel',
 			hint: 'Supports DeepSeek, ChatGPT (OpenAI), etc. Enter the corresponding API Key to generate summaries.'
+		},
+		aiInsights: {
+			settingsLabel: 'AI API Settings',
+			statsEnabledPanels: '{n} panels enabled',
+			statsMessages: '{n} messages',
+			statsAlerts: '{n} alerts',
+			summaryTitle: 'Summary',
+			aiSummaryTitle: 'AI Summary',
+			generating: 'Generating…',
+			retry: 'Retry',
+			regenerate: 'Regenerate',
+			generate: 'Generate summary',
+			placeholderNeedData: 'Enable panels to analyze and wait for data.',
+			placeholderNeedKey:
+				'Click the settings button to add an API key (DeepSeek, ChatGPT, etc.), or set VITE_AI_API_KEY in .env.',
+			requestFailed:
+				'Request failed (possibly CORS). Use a local proxy or server-side forwarding, or run npm run dev to use the SvelteKit proxy.'
 		},
 		common: {
 			retry: 'Retry',
@@ -810,6 +889,20 @@ export const UI_TEXTS: Record<
 			pinPanel: 'Pin to top',
 			unpinPanel: 'Unpin',
 			activeCount: 'active'
+		},
+		contracts: {
+			billion: 'B',
+			million: 'M',
+			thousand: 'K'
+		},
+		correlation: {
+			emergingPatterns: 'Emerging Patterns',
+			momentumSignals: 'Momentum Signals',
+			crossSourceLinks: 'Cross-Source Links',
+			predictiveSignals: 'Predictive Signals',
+			items: '{n} items',
+			sources: '{n} sources',
+			confidence: 'Confidence'
 		},
 		narrative: { mentions: 'mentions' },
 		map: {

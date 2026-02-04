@@ -21,10 +21,12 @@
 	let aiError = $state<string | null>(null);
 	let settingsModalOpen = $state(false);
 	let lastAutoTick = $state<number | null>(null);
+	let lastLocale = $state($settings.locale);
 
 	const title = $derived(getPanelName('aiInsights', $settings.locale));
 	const empty = $derived(UI_TEXTS[$settings.locale].empty.aiInsights);
-	const summaryBullets = $derived(context ? getStructuredSummary(context) : []);
+	const aiT = $derived(UI_TEXTS[$settings.locale].aiInsights);
+	const summaryBullets = $derived(context ? getStructuredSummary(context, $settings.locale) : []);
 	const hasContent = $derived(
 		context !== null && (context.messageCount > 0 || summaryBullets.length > 0)
 	);
@@ -45,20 +47,32 @@
 		handleGenerate();
 	});
 
+	// Regenerate summary when locale changes
+	$effect(() => {
+		if (lastLocale === $settings.locale) return;
+		lastLocale = $settings.locale;
+		aiSummary = '';
+		aiError = null;
+		lastAutoTick = null;
+		if (canGenerate && context && !aiLoading) {
+			handleGenerate();
+		}
+	});
+
 	async function handleGenerate() {
 		if (!context || aiLoading) return;
 		aiLoading = true;
 		aiError = null;
 		aiSummary = '';
 		try {
-			const { content } = await generateAISummary(context);
+			const { content } = await generateAISummary(context, $settings.locale);
 			aiSummary = content;
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
 			// 跨域或网络错误时给出可操作提示
 			aiError =
 				msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')
-					? '请求失败（可能是跨域）。请用本地代理或后端转发 DeepSeek API，或使用 npm run dev 通过 SvelteKit 服务端转发。'
+					? aiT.requestFailed
 					: msg;
 		} finally {
 			aiLoading = false;
@@ -92,8 +106,8 @@
 		<button
 			type="button"
 			class="ai-settings-btn"
-			aria-label={$settings.locale === 'zh' ? 'AI API 设置' : 'AI API Settings'}
-			title={$settings.locale === 'zh' ? '设置' : 'Settings'}
+			aria-label={aiT.settingsLabel}
+			title={aiT.settingsLabel}
 			onclick={() => (settingsModalOpen = true)}
 		>
 			⚙️
@@ -106,16 +120,20 @@
 	{:else if context}
 		<div class="ai-insights-content">
 			<div class="stats-row">
-				<span class="stat">已启用 {context.enabledPanelIds.length} 个模块</span>
-				<span class="stat">{context.messageCount} 条消息</span>
+				<span class="stat">
+					{aiT.statsEnabledPanels.replace('{n}', String(context.enabledPanelIds.length))}
+				</span>
+				<span class="stat">{aiT.statsMessages.replace('{n}', String(context.messageCount))}</span>
 				{#if context.alertsCount > 0}
-					<span class="stat stat-alerts">{context.alertsCount} 条告警</span>
+					<span class="stat stat-alerts">
+						{aiT.statsAlerts.replace('{n}', String(context.alertsCount))}
+					</span>
 				{/if}
 			</div>
 
 			{#if summaryBullets.length > 0}
 				<div class="section">
-					<div class="section-title">综合摘要</div>
+					<div class="section-title">{aiT.summaryTitle}</div>
 					<ul class="summary-list">
 						{#each summaryBullets as bullet}
 							<li class="summary-bullet">
@@ -133,26 +151,26 @@
 			{/if}
 
 			<div class="section ai-summary-section">
-				<div class="section-title">AI 总结</div>
+				<div class="section-title">{aiT.aiSummaryTitle}</div>
 				{#if canGenerate}
 					{#if aiLoading}
-						<p class="ai-loading">正在生成…</p>
+						<p class="ai-loading">{aiT.generating}</p>
 					{:else if aiError}
 						<p class="ai-error">{aiError}</p>
-						<button type="button" class="generate-btn" onclick={handleGenerate}>重试</button>
+						<button type="button" class="generate-btn" onclick={handleGenerate}>{aiT.retry}</button>
 					{:else if aiSummary}
 						<div class="ai-summary-text">{aiSummary}</div>
-						<button type="button" class="generate-btn secondary" onclick={handleGenerate}>重新生成</button>
+						<button type="button" class="generate-btn secondary" onclick={handleGenerate}>
+							{aiT.regenerate}
+						</button>
 					{:else}
 						<button type="button" class="generate-btn" onclick={handleGenerate} disabled={aiLoading}>
-							生成总结
+							{aiT.generate}
 						</button>
 					{/if}
 				{:else}
 					<p class="placeholder-text">
-						{isAIConfigured()
-							? '请先启用要分析的模块并等待数据加载'
-							: '点击右上角设置按钮填入 API Key（支持 DeepSeek、ChatGPT 等），或在 .env 中配置 VITE_AI_API_KEY。'}
+						{isAIConfigured() ? aiT.placeholderNeedData : aiT.placeholderNeedKey}
 					</p>
 				{/if}
 			</div>

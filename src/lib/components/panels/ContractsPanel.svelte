@@ -26,14 +26,21 @@
 	const title = $derived(getPanelName('contracts', $settings.locale));
 	const emptyContracts = $derived(UI_TEXTS[$settings.locale].empty.contracts);
 	const t = $derived(UI_TEXTS[$settings.locale].common);
+	const contractT = $derived(UI_TEXTS[$settings.locale].contracts);
 	const visibleList = $derived(expanded ? contracts : contracts.slice(0, DEFAULT_PREVIEW));
 	const hasMore = $derived(contracts.length > DEFAULT_PREVIEW);
 	const moreCount = $derived(contracts.length - DEFAULT_PREVIEW);
 
 	function formatValue(v: number): string {
-		if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
-		if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
-		if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+		if ($settings.locale === 'zh') {
+			if (v >= 1e9) return '$' + (v / 1e8).toFixed(1) + contractT.billion;
+			if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + contractT.million;
+			if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + contractT.thousand;
+			return '$' + v.toFixed(0);
+		}
+		if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + contractT.billion;
+		if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + contractT.million;
+		if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + contractT.thousand;
 		return '$' + v.toFixed(0);
 	}
 </script>

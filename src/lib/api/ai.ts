@@ -8,6 +8,7 @@ import { aiSettings } from '$lib/stores/aiSettings';
 import { getProvider } from '$lib/config/ai-providers';
 import { AI_API_KEY, DEEPSEEK_API_BASE } from '$lib/config/api';
 import { getStructuredSummary } from '$lib/analysis/ai-context';
+import type { Locale } from '$lib/config';
 import type { AIModuleContext } from '$lib/analysis/ai-context';
 
 const MAX_TOKENS = 1024;
@@ -46,14 +47,15 @@ export function getEffectiveAIConfig(): EffectiveAIConfig | null {
 	return null;
 }
 
-function buildPrompt(context: AIModuleContext): string {
-	const bullets = getStructuredSummary(context);
+function buildPrompt(context: AIModuleContext, locale: Locale): string {
+	const bullets = getStructuredSummary(context, locale);
 	const headlineLines = context.messages
 		.slice(0, MAX_HEADLINES)
 		.map((m) => `- [${m.source}] ${m.title}`)
 		.join('\n');
 
-return `你是一个情报与市场简报助手。根据以下聚合情报与近期标题，用 2–3 段话写一份简洁的「态势总结」：突出主要主题、风险/机会、市场与地缘要点。语言与下面内容一致（中文为主则用中文，英文为主则用英文）。
+	if (locale === 'zh') {
+		return `你是一个情报与市场简报助手。根据以下聚合情报与近期标题，用 2–3 段话写一份简洁的「态势总结」：突出主要主题、风险/机会、市场与地缘要点。请使用中文输出。
 
 【综合摘要】
 ${bullets.join('\n')}
@@ -62,6 +64,17 @@ ${bullets.join('\n')}
 ${headlineLines || '（无）'}
 
 请直接输出总结正文，不要加「总结：」等前缀。最后追加 2–3 条可操作建议（条目列表）。`;
+	}
+
+	return `You are an intelligence and market briefing assistant. Based on the aggregated signals and recent headlines below, write a concise 2–3 paragraph situation summary highlighting key themes, risks/opportunities, market moves, and geopolitics. Respond in English.
+
+Summary bullets:
+${bullets.join('\n')}
+
+Recent headlines (sample):
+${headlineLines || '(none)'}
+
+Output the summary only (no “Summary:” prefix). Finish with 2–3 actionable recommendations in a bullet list.`;
 }
 
 export interface GenerateSummaryResult {
@@ -116,13 +129,20 @@ async function callChatApi(
  * Uses user-configured provider/key when set; otherwise env VITE_AI_API_KEY (DeepSeek).
  * For env key only: tries server proxy /api/ai-summary first to avoid CORS in dev.
  */
-export async function generateAISummary(context: AIModuleContext): Promise<GenerateSummaryResult> {
+export async function generateAISummary(
+	context: AIModuleContext,
+	locale: Locale
+): Promise<GenerateSummaryResult> {
 	const config = getEffectiveAIConfig();
 	if (!config) {
-		throw new Error('未配置 API Key。请在 AI 分析面板点击设置填入，或在 .env 中设置 VITE_AI_API_KEY。');
+		throw new Error(
+			locale === 'zh'
+				? '未配置 API Key。请在 AI 分析面板点击设置填入，或在 .env 中设置 VITE_AI_API_KEY。'
+				: 'API key not configured. Add it in AI settings or set VITE_AI_API_KEY in .env.'
+		);
 	}
 
-	const prompt = buildPrompt(context);
+	const prompt = buildPrompt(context, locale);
 
 	// User-configured key: always direct (no server proxy)
 	if (config.fromUser) {

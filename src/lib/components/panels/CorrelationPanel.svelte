@@ -17,6 +17,7 @@
 	const title = $derived(getPanelName('correlation', $settings.locale));
 	const empty = $derived(UI_TEXTS[$settings.locale].empty);
 	const tagsT = $derived(UI_TEXTS[$settings.locale].tags);
+	const corrT = $derived(UI_TEXTS[$settings.locale].correlation);
 	const count = $derived(news.length > 0 && analysis ? 1 : 0);
 	function levelLabel(l: string): string {
 		return tagsT.correlationLevel[l] ?? l.toUpperCase();
@@ -62,7 +63,7 @@
 		<div class="correlation-content">
 			{#if analysis.emergingPatterns.length > 0}
 				<div class="section">
-					<div class="section-title">Emerging Patterns</div>
+				<div class="section-title">{corrT.emergingPatterns}</div>
 					{#each analysis.emergingPatterns.slice(0, 3) as pattern}
 						<div class="pattern-item">
 							<div class="pattern-header">
@@ -73,7 +74,7 @@
 								/>
 							</div>
 							<div class="pattern-sources">
-								{pattern.sources.slice(0, 3).join(' · ')} ({pattern.count} items)
+								{pattern.sources.slice(0, 3).join(' · ')} ({corrT.items.replace('{n}', String(pattern.count))})
 							</div>
 						</div>
 					{/each}
@@ -82,7 +83,7 @@
 
 			{#if analysis.momentumSignals.length > 0}
 				<div class="section">
-					<div class="section-title">Momentum Signals</div>
+				<div class="section-title">{corrT.momentumSignals}</div>
 					{#each analysis.momentumSignals.slice(0, 3) as signal}
 						<div class="signal-item {getMomentumClass(signal.momentum)}">
 							<span class="signal-topic">{signal.name}</span>
@@ -101,13 +102,15 @@
 
 			{#if analysis.crossSourceCorrelations.length > 0}
 				<div class="section">
-					<div class="section-title">Cross-Source Links</div>
+				<div class="section-title">{corrT.crossSourceLinks}</div>
 					{#each analysis.crossSourceCorrelations.slice(0, 3) as corr}
 						<div class="correlation-item">
 							<div class="correlation-sources">
 								{corr.sources.slice(0, 2).join(' ↔ ')}
 							</div>
-							<div class="correlation-topic">{corr.name} ({corr.sourceCount} sources)</div>
+							<div class="correlation-topic">
+								{corr.name} ({corrT.sources.replace('{n}', String(corr.sourceCount))})
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -115,12 +118,12 @@
 
 			{#if analysis.predictiveSignals.length > 0}
 				<div class="section">
-					<div class="section-title">Predictive Signals</div>
+				<div class="section-title">{corrT.predictiveSignals}</div>
 					{#each analysis.predictiveSignals.slice(0, 2) as signal}
 						<div class="predictive-item">
 							<div class="predictive-pattern">{signal.prediction}</div>
 							<div class="predictive-confidence">
-								Confidence: {Math.round(signal.confidence * 100)}%
+								{corrT.confidence}: {Math.round(signal.confidence * 100)}%
 							</div>
 						</div>
 					{/each}
