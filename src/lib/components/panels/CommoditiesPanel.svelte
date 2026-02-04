@@ -21,6 +21,9 @@
 	let searchDebounceId = $state<ReturnType<typeof setTimeout> | null>(null);
 	let lastRequestedQuery = $state('');
 	let searchResultsEl = $state<HTMLDivElement | null>(null);
+	let draggingSymbol = $state<string | null>(null);
+	let dragOverSymbol = $state<string | null>(null);
+	let pressedSymbol = $state<string | null>(null);
 
 	function getCommodityName(symbol: string, locale: 'zh' | 'en'): string {
 		return UI_TEXTS[locale].commodities[symbol] ?? symbol;
@@ -81,6 +84,44 @@
 	function handleRemoveCommodity(symbol: string) {
 		commodityList.removeCommodity(symbol);
 		onCommodityListChange?.();
+	}
+
+	function onDragStart(symbol: string, event: DragEvent) {
+		draggingSymbol = symbol;
+		if (event.dataTransfer) {
+			event.dataTransfer.setData('text/plain', symbol);
+			event.dataTransfer.effectAllowed = 'move';
+		}
+	}
+
+	function onDragOver(symbol: string, event: DragEvent) {
+		event.preventDefault();
+		dragOverSymbol = symbol;
+	}
+
+	function onDrop(symbol: string, event: DragEvent) {
+		event.preventDefault();
+		if (!draggingSymbol || draggingSymbol === symbol) return;
+		commodityList.moveCommodity(draggingSymbol, symbol);
+		onCommodityListChange?.();
+		draggingSymbol = null;
+		dragOverSymbol = null;
+	}
+
+	function onDragEnd() {
+		draggingSymbol = null;
+		dragOverSymbol = null;
+		pressedSymbol = null;
+	}
+
+	function onPointerDown(symbol: string) {
+		pressedSymbol = symbol;
+	}
+
+	function onPointerUp(symbol: string) {
+		if (pressedSymbol === symbol && draggingSymbol !== symbol) {
+			pressedSymbol = null;
+		}
 	}
 
 	function mapSearchSymbol(entry: { symbol: string; name: string; exchange?: string }): string {
@@ -184,7 +225,21 @@
 	{:else}
 		<div class="commodities-list">
 			{#each items as item (item.symbol)}
-				<div class="commodity-item">
+				<div
+					class={`commodity-item ${dragOverSymbol === item.symbol ? 'drag-over' : ''} ${
+						draggingSymbol === item.symbol || pressedSymbol === item.symbol ? 'dragging' : ''
+					}`}
+					draggable="true"
+					role="listitem"
+					aria-grabbed={draggingSymbol === item.symbol}
+					onpointerdown={() => onPointerDown(item.symbol)}
+					onpointerup={() => onPointerUp(item.symbol)}
+					onpointerleave={() => onPointerUp(item.symbol)}
+					ondragstart={(event) => onDragStart(item.symbol, event)}
+					ondragover={(event) => onDragOver(item.symbol, event)}
+					ondrop={(event) => onDrop(item.symbol, event)}
+					ondragend={onDragEnd}
+				>
 					<MarketItem
 						{item}
 						displayName={item.name}
@@ -313,6 +368,21 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		transition: transform 0.12s ease, opacity 0.12s ease;
+		cursor: grab;
+	}
+
+	.commodity-item.dragging {
+		transform: scale(0.98);
+		opacity: 0.8;
+		cursor: grabbing;
+	}
+
+	.commodity-item.drag-over {
+		outline: 1px dashed var(--accent);
+		outline-offset: 2px;
+		background: rgba(var(--accent-rgb), 0.05);
+		border-radius: 4px;
 	}
 
 	.commodity-item :global(.market-item) {

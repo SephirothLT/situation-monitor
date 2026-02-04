@@ -22,6 +22,9 @@ let searchResults = $state<{ symbol: string; name: string; exchange?: string }[]
 	// Track query for the in-flight request so we only apply result when it matches (avoids async callback reading stale input)
 	let lastRequestedQuery = $state('');
 	let searchResultsEl = $state<HTMLDivElement | null>(null);
+	let draggingSymbol = $state<string | null>(null);
+	let dragOverSymbol = $state<string | null>(null);
+	let pressedSymbol = $state<string | null>(null);
 
 	const items = $derived($indices.items);
 	const loading = $derived($indices.loading);
@@ -135,6 +138,50 @@ let searchResults = $state<{ symbol: string; name: string; exchange?: string }[]
 		onIndicesListChange?.();
 	}
 
+	function onDragStart(symbol: string, event: DragEvent) {
+		draggingSymbol = symbol;
+		if (event.dataTransfer) {
+			event.dataTransfer.setData('text/plain', symbol);
+			event.dataTransfer.setData('text/indices-symbol', symbol);
+			event.dataTransfer.setData('text', symbol);
+			event.dataTransfer.setData('application/x-indices-symbol', symbol);
+			event.dataTransfer.effectAllowed = 'move';
+		}
+		if (event.dataTransfer?.setDragImage) {
+			event.dataTransfer.setDragImage(event.currentTarget as Element, 0, 0);
+		}
+	}
+
+	function onDragOver(symbol: string, event: DragEvent) {
+		event.preventDefault();
+		dragOverSymbol = symbol;
+	}
+
+	function onDrop(symbol: string, event: DragEvent) {
+		event.preventDefault();
+		if (!draggingSymbol || draggingSymbol === symbol) return;
+		indicesList.moveIndex(draggingSymbol, symbol);
+		onIndicesListChange?.();
+		draggingSymbol = null;
+		dragOverSymbol = null;
+	}
+
+	function onDragEnd() {
+		draggingSymbol = null;
+		dragOverSymbol = null;
+		pressedSymbol = null;
+	}
+
+	function onPointerDown(symbol: string) {
+		pressedSymbol = symbol;
+	}
+
+	function onPointerUp(symbol: string) {
+		if (pressedSymbol === symbol && draggingSymbol !== symbol) {
+			pressedSymbol = null;
+		}
+	}
+
 	function openAddModal() {
 		addModalOpen = true;
 		searchQuery = '';
@@ -150,7 +197,21 @@ let searchResults = $state<{ symbol: string; name: string; exchange?: string }[]
 	{:else}
 		<div class="markets-list">
 			{#each visibleItems as item (item.symbol)}
-				<div class="market-item-row">
+				<div
+					class={`market-item-row ${dragOverSymbol === item.symbol ? 'drag-over' : ''} ${
+						draggingSymbol === item.symbol || pressedSymbol === item.symbol ? 'dragging' : ''
+					}`}
+					draggable="true"
+					role="listitem"
+					aria-grabbed={draggingSymbol === item.symbol}
+					onpointerdown={() => onPointerDown(item.symbol)}
+					onpointerup={() => onPointerUp(item.symbol)}
+					onpointerleave={() => onPointerUp(item.symbol)}
+					ondragstart={(event) => onDragStart(item.symbol, event)}
+					ondragover={(event) => onDragOver(item.symbol, event)}
+					ondrop={(event) => onDrop(item.symbol, event)}
+					ondragend={onDragEnd}
+				>
 					<MarketItem {item} />
 					{#if selectedList.length > 1}
 						<button
@@ -280,6 +341,21 @@ let searchResults = $state<{ symbol: string; name: string; exchange?: string }[]
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		transition: transform 0.12s ease, opacity 0.12s ease;
+		cursor: grab;
+	}
+
+	.market-item-row.dragging {
+		transform: scale(0.98);
+		opacity: 0.8;
+		cursor: grabbing;
+	}
+
+	.market-item-row.drag-over {
+		outline: 1px dashed var(--accent);
+		outline-offset: 2px;
+		background: rgba(var(--accent-rgb), 0.05);
+		border-radius: 4px;
 	}
 
 	.market-item-row :global(.market-item) {

@@ -114,6 +114,20 @@ function createCommodityListStore() {
 			});
 		},
 
+		/** Move an item to a new position (drag & drop). */
+		moveCommodity(fromSymbol: string, toSymbol: string): void {
+			update((list) => {
+				const fromIndex = list.findIndex((i) => i.symbol === fromSymbol);
+				const toIndex = list.findIndex((i) => i.symbol === toSymbol);
+				if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return list;
+				const next = [...list];
+				const [moved] = next.splice(fromIndex, 1);
+				next.splice(toIndex, 0, moved);
+				save(next);
+				return next;
+			});
+		},
+
 		reset(): void {
 			save(defaultList);
 			set([...defaultList]);

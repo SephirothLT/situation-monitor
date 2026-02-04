@@ -1,112 +1,143 @@
 /**
  * Crypto list store - user-selected coins for the crypto panel (persisted)
+ * Same pattern as commodityList: stores { id, symbol, name }[], supports preset + search-added coins.
  */
 
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { CRYPTO, CRYPTO_OPTIONS, type CryptoOption } from '$lib/config';
 
-const STORAGE_KEY = 'situationMonitorCryptoIds';
+const STORAGE_KEY = 'situationMonitorCryptoList';
 const MAX_CRYPTO = 20;
 
-function loadSelectedIds(): string[] {
-	if (!browser) return CRYPTO.map((c) => c.id);
+const defaultList: CryptoOption[] = [...CRYPTO];
+const presetById = new Map<string, CryptoOption>(
+	CRYPTO_OPTIONS.map((c) => [c.id, c])
+);
+
+function loadSavedList(): CryptoOption[] {
+	if (!browser) return [...defaultList];
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) return CRYPTO.map((c) => c.id);
-		const parsed = JSON.parse(raw) as unknown;
-		if (!Array.isArray(parsed)) return CRYPTO.map((c) => c.id);
-		const ids = parsed.filter((id): id is string => typeof id === 'string');
-		return ids.length > 0 ? ids : CRYPTO.map((c) => c.id);
+		if (raw) {
+			const parsed = JSON.parse(raw) as unknown;
+			if (Array.isArray(parsed)) {
+				const list = parsed.filter(
+					(item): item is CryptoOption =>
+						typeof item === 'object' &&
+						item !== null &&
+						typeof (item as CryptoOption).id === 'string' &&
+						typeof (item as CryptoOption).symbol === 'string' &&
+						typeof (item as CryptoOption).name === 'string'
+				);
+				if (list.length > 0) return list;
+			}
+		}
+		// Legacy: old key stored array of ids
+		const legacyKey = 'situationMonitorCryptoIds';
+		const legacyRaw = localStorage.getItem(legacyKey);
+		if (legacyRaw) {
+			const ids = JSON.parse(legacyRaw) as unknown;
+			if (Array.isArray(ids)) {
+				const symbolIds = ids.filter((id): id is string => typeof id === 'string');
+				if (symbolIds.length > 0) {
+					const migrated = symbolIds.map((id) => {
+						const preset = presetById.get(id);
+						return preset ?? { id, symbol: id, name: id };
+					});
+					// Persist to new key so next load uses new format
+					try {
+						localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+					} catch {
+						// ignore
+					}
+					return migrated;
+				}
+			}
+		}
 	} catch {
-		return CRYPTO.map((c) => c.id);
+		// ignore
 	}
+	return [...defaultList];
 }
 
-function saveSelectedIds(ids: string[]): void {
+function save(list: CryptoOption[]): void {
 	if (!browser) return;
 	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 	} catch (e) {
 		console.warn('Failed to save crypto list:', e);
 	}
 }
 
-const idToOption = (): Map<string, CryptoOption> => {
-	const m = new Map<string, CryptoOption>();
-	for (const o of CRYPTO_OPTIONS) {
-		m.set(o.id, o);
-	}
-	return m;
-};
-
-const optionMap = idToOption();
-
-// Legacy id -> current CoinGecko id (e.g. old config had 'link', CoinGecko uses 'chainlink')
-const ID_ALIASES: Record<string, string> = { link: 'chainlink' };
-
-function resolveId(id: string): string {
-	return ID_ALIASES[id] ?? id;
-}
-
 function createCryptoListStore() {
-	const { subscribe, set, update } = writable<string[]>(loadSelectedIds());
+	const { subscribe, set, update } = writable<CryptoOption[]>(loadSavedList());
 
 	return {
 		subscribe,
 
 		getSelectedIds(): string[] {
+			return get({ subscribe }).map((e) => e.id);
+		},
+
+		getSelectedConfig(): CryptoOption[] {
 			return get({ subscribe });
 		},
 
-		/** Get config list for API: { id, symbol, name }[] */
-		getSelectedConfig(): CryptoOption[] {
-			const ids = get({ subscribe });
-			const seen = new Set<string>();
-			const result: CryptoOption[] = [];
-			for (const id of ids) {
-				const resolvedId = resolveId(id);
-				const opt = optionMap.get(resolvedId);
-				if (opt && !seen.has(opt.id)) {
-					seen.add(opt.id);
-					result.push(opt);
-				}
-			}
-			return result.length > 0 ? result : [...CRYPTO];
-		},
-
-		addCrypto(id: string): boolean {
-			const opt = optionMap.get(id);
-			if (!opt) return false;
+		/** Add a coin by id, symbol, name (from preset or search). Returns true if added. */
+		addCrypto(entry: CryptoOption): boolean {
+			const id = (entry.id || '').trim();
+			const symbol = (entry.symbol || entry.id || id).trim();
+			const name = (entry.name || entry.symbol || id).trim();
+			if (!id) return false;
 			let added = false;
-			update((ids) => {
-				if (ids.includes(id) || ids.length >= MAX_CRYPTO) return ids;
+			update((list) => {
+				if (list.some((i) => i.id.toLowerCase() === id.toLowerCase())) return list;
+				if (list.length >= MAX_CRYPTO) return list;
 				added = true;
-				const next = [...ids, id];
-				saveSelectedIds(next);
+				const next = [...list, { id, symbol, name }];
+				save(next);
 				return next;
 			});
 			return added;
 		},
 
+		/** Add from preset (CRYPTO_OPTIONS). Returns true if added. */
+		addFromPreset(id: string): boolean {
+			const opt = CRYPTO_OPTIONS.find((o) => o.id === id);
+			if (!opt) return false;
+			return this.addCrypto(opt);
+		},
+
 		removeCrypto(id: string): void {
-			update((ids) => {
-				const next = ids.filter((x) => x !== id);
+			update((list) => {
+				const next = list.filter((i) => i.id !== id);
 				if (next.length === 0) {
-					// Keep at least default
-					const defaultIds = CRYPTO.map((c) => c.id);
-					saveSelectedIds(defaultIds);
-					return defaultIds;
+					save(defaultList);
+					return defaultList;
 				}
-				saveSelectedIds(next);
+				save(next);
+				return next;
+			});
+		},
+
+		/** Move an item to a new position (drag & drop). */
+		moveCrypto(fromId: string, toId: string): void {
+			update((list) => {
+				const fromIndex = list.findIndex((i) => i.id === fromId);
+				const toIndex = list.findIndex((i) => i.id === toId);
+				if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return list;
+				const next = [...list];
+				const [moved] = next.splice(fromIndex, 1);
+				next.splice(toIndex, 0, moved);
+				save(next);
 				return next;
 			});
 		},
 
 		reset(): void {
-			const defaultIds = CRYPTO.map((c) => c.id);
-			saveSelectedIds(defaultIds);
-			set(defaultIds);
+			save(defaultList);
+			set([...defaultList]);
 		}
 	};
 }

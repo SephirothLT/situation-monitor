@@ -278,8 +278,12 @@ export const UI_TEXTS: Record<
 			remove: string;
 			maxReached: string;
 			searchPlaceholder: string;
+			searchStockPlaceholder: string;
 			noMatch: string;
 			allAdded: string;
+			presetLabel: string;
+			searchLabel: string;
+			searching: string;
 		};
 		whale: {
 			addAddress: string;
@@ -507,8 +511,12 @@ export const UI_TEXTS: Record<
 			remove: '移除',
 			maxReached: '最多添加 20 个币种',
 			searchPlaceholder: '搜索名称或代号',
+			searchStockPlaceholder: '输入币种名称或代码搜索…',
 			noMatch: '无匹配',
-			allAdded: '已全部添加'
+			allAdded: '已全部添加',
+			presetLabel: '常用币种',
+			searchLabel: '搜索币种',
+			searching: '搜索中…'
 		},
 		whale: {
 			addAddress: '添加地址',
@@ -743,8 +751,12 @@ export const UI_TEXTS: Record<
 			remove: 'Remove',
 			maxReached: 'Max 20 coins',
 			searchPlaceholder: 'Search name or symbol',
+			searchStockPlaceholder: 'Search coin by symbol or name…',
 			noMatch: 'No match',
-			allAdded: 'All added'
+			allAdded: 'All added',
+			presetLabel: 'Common coins',
+			searchLabel: 'Search coin',
+			searching: 'Searching…'
 		},
 		whale: {
 			addAddress: 'Add address',
