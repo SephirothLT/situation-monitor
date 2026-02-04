@@ -206,6 +206,19 @@ export const UI_TEXTS: Record<
 			showLess: string;
 			moreItems: string;
 		};
+		/** Small labels/badges on message bar and panels (ALERT, POWELL, VIDEO, intel types, etc.) */
+		tags: {
+			alert: string;
+			powell: string;
+			video: string;
+			intelSourceType: Record<string, string>;
+			intelRegion: Record<string, string>;
+			intelTopic: Record<string, string>;
+			fedType: Record<string, string>;
+			narrativeStatus: Record<string, string>;
+			narrativeSeverity: Record<string, string>;
+			correlationLevel: Record<string, string>;
+		};
 		/** Empty state messages per panel/category */
 		empty: {
 			default: string;
@@ -406,6 +419,59 @@ export const UI_TEXTS: Record<
 			showMore: '展开更多',
 			showLess: '收起',
 			moreItems: '还有 {n} 条'
+		},
+		tags: {
+			alert: '告警',
+			powell: '鲍威尔',
+			video: '视频',
+			intelSourceType: {
+				osint: '开源情报',
+				govt: '政府',
+				cyber: '网络',
+				defense: '防务',
+				regional: '区域',
+				'think-tank': '智库'
+			},
+			intelRegion: {
+				EUROPE: '欧洲',
+				MENA: '中东与北非',
+				APAC: '亚太',
+				AMERICAS: '美洲',
+				AFRICA: '非洲'
+			},
+			intelTopic: {
+				CYBER: '网络安全',
+				NUCLEAR: '核问题',
+				CONFLICT: '冲突',
+				INTEL: '情报',
+				DEFENSE: '防务',
+				DIPLO: '外交'
+			},
+			fedType: {
+				monetary: '货币政策',
+				powell: '鲍威尔',
+				speech: '演讲',
+				testimony: '听证',
+				announcement: '公告'
+			},
+			narrativeStatus: {
+				viral: '病毒式',
+				spreading: '扩散中',
+				emerging: '新兴',
+				crossing: '跨界'
+			},
+			narrativeSeverity: {
+				high: '高',
+				medium: '中',
+				low: '低'
+			},
+			correlationLevel: {
+				high: '高',
+				elevated: '升高',
+				emerging: '新兴',
+				surging: '飙升',
+				rising: '上升'
+			}
 		},
 		empty: {
 			default: '暂无数据',
@@ -646,6 +712,59 @@ export const UI_TEXTS: Record<
 			showMore: 'Show more',
 			showLess: 'Show less',
 			moreItems: '{n} more'
+		},
+		tags: {
+			alert: 'ALERT',
+			powell: 'POWELL',
+			video: 'VIDEO',
+			intelSourceType: {
+				osint: 'OSINT',
+				govt: 'GOVT',
+				cyber: 'CYBER',
+				defense: 'DEFENSE',
+				regional: 'REGIONAL',
+				'think-tank': 'THINK TANK'
+			},
+			intelRegion: {
+				EUROPE: 'Europe',
+				MENA: 'MENA',
+				APAC: 'APAC',
+				AMERICAS: 'Americas',
+				AFRICA: 'Africa'
+			},
+			intelTopic: {
+				CYBER: 'Cyber',
+				NUCLEAR: 'Nuclear',
+				CONFLICT: 'Conflict',
+				INTEL: 'Intel',
+				DEFENSE: 'Defense',
+				DIPLO: 'Diplomacy'
+			},
+			fedType: {
+				monetary: 'Monetary Policy',
+				powell: 'Chair Powell',
+				speech: 'Speeches',
+				testimony: 'Testimony',
+				announcement: 'Announcements'
+			},
+			narrativeStatus: {
+				viral: 'VIRAL',
+				spreading: 'SPREADING',
+				emerging: 'EMERGING',
+				crossing: 'CROSSING'
+			},
+			narrativeSeverity: {
+				high: 'HIGH',
+				medium: 'MEDIUM',
+				low: 'LOW'
+			},
+			correlationLevel: {
+				high: 'HIGH',
+				elevated: 'ELEVATED',
+				emerging: 'EMERGING',
+				surging: 'SURGING',
+				rising: 'RISING'
+			}
 		},
 		empty: {
 			default: 'No data',

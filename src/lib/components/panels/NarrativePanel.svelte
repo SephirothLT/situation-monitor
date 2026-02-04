@@ -17,7 +17,14 @@
 	const title = $derived(getPanelName('narrative', $settings.locale));
 	const empty = $derived(UI_TEXTS[$settings.locale].empty);
 	const narrativeT = $derived(UI_TEXTS[$settings.locale].narrative);
+	const tagsT = $derived(UI_TEXTS[$settings.locale].tags);
 	const count = $derived(news.length > 0 && analysis ? 1 : 0);
+	function statusLabel(s: string): string {
+		return tagsT.narrativeStatus[s] ?? s.toUpperCase();
+	}
+	function severityLabel(s: string): string {
+		return tagsT.narrativeSeverity[s] ?? s.toUpperCase();
+	}
 
 	function getStatusVariant(status: string): 'default' | 'warning' | 'danger' | 'success' | 'info' {
 		switch (status) {
@@ -61,7 +68,7 @@
 							<div class="narrative-header">
 								<span class="narrative-name">{narrative.name}</span>
 								<Badge
-									text={narrative.status.toUpperCase()}
+									text={statusLabel(narrative.status)}
 									variant={getStatusVariant(narrative.status)}
 								/>
 							</div>
@@ -119,7 +126,7 @@
 							<div class="disinfo-header">
 								<span class="disinfo-name">{signal.name}</span>
 								<Badge
-									text={signal.severity.toUpperCase()}
+									text={severityLabel(signal.severity)}
 									variant={getSeverityVariant(signal.severity)}
 								/>
 							</div>

@@ -16,7 +16,11 @@
 	const analysis = $derived(analyzeCorrelations(news));
 	const title = $derived(getPanelName('correlation', $settings.locale));
 	const empty = $derived(UI_TEXTS[$settings.locale].empty);
+	const tagsT = $derived(UI_TEXTS[$settings.locale].tags);
 	const count = $derived(news.length > 0 && analysis ? 1 : 0);
+	function levelLabel(l: string): string {
+		return tagsT.correlationLevel[l] ?? l.toUpperCase();
+	}
 
 	function getLevelVariant(level: string): 'default' | 'warning' | 'danger' | 'success' | 'info' {
 		switch (level) {
@@ -64,7 +68,7 @@
 							<div class="pattern-header">
 								<span class="pattern-topic">{pattern.name}</span>
 								<Badge
-									text={pattern.level.toUpperCase()}
+									text={levelLabel(pattern.level)}
 									variant={getLevelVariant(pattern.level)}
 								/>
 							</div>

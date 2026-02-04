@@ -21,6 +21,11 @@
 	}: Props = $props();
 
 	const openInNewTabLabel = $derived(UI_TEXTS[$settings.locale].common.openInNewTab);
+	const tagsT = $derived(UI_TEXTS[$settings.locale].tags);
+	const alertTagLabel = $derived(UI_TEXTS[$settings.locale].tags.alert);
+	function regionLabel(key: string): string {
+		return tagsT.intelRegion?.[key] ?? key;
+	}
 </script>
 
 <div class="news-item" class:alert={showAlert && item.isAlert} class:compact>
@@ -28,7 +33,7 @@
 		<div class="item-source">
 			{item.source}
 			{#if showAlert && item.isAlert}
-				<span class="alert-tag">ALERT</span>
+				<span class="alert-tag">{alertTagLabel}</span>
 			{/if}
 		</div>
 	{/if}
@@ -50,7 +55,7 @@
 	<div class="item-meta">
 		<span class="item-time">{timeAgo(item.timestamp)}</span>
 		{#if item.region}
-			<span class="item-region">{item.region}</span>
+			<span class="item-region">{regionLabel(item.region)}</span>
 		{/if}
 	</div>
 </div>

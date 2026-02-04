@@ -13,6 +13,8 @@
 
 	let { onCryptoListChange }: Props = $props();
 
+	const DEFAULT_PREVIEW = 10;
+	let expanded = $state(false);
 	let addModalOpen = $state(false);
 	let searchQuery = $state('');
 	let coinSearchQuery = $state('');
@@ -33,7 +35,11 @@
 	const selectedList = $derived($cryptoList);
 	const selectedIdsSet = $derived(new Set(selectedList.map((i) => i.id)));
 	const t = $derived(UI_TEXTS[$settings.locale].crypto);
+	const commonT = $derived(UI_TEXTS[$settings.locale].common);
 	const emptyCrypto = $derived(UI_TEXTS[$settings.locale].empty.crypto);
+	const visibleItems = $derived(expanded ? items : items.slice(0, DEFAULT_PREVIEW));
+	const hasMore = $derived(items.length > DEFAULT_PREVIEW);
+	const moreCount = $derived(items.length - DEFAULT_PREVIEW);
 
 	const availableCoins = $derived(
 		CRYPTO_OPTIONS.filter(
@@ -154,7 +160,7 @@
 		<div class="empty-state">{emptyCrypto}</div>
 	{:else}
 		<div class="crypto-list">
-			{#each items as coin (coin.id)}
+			{#each visibleItems as coin (coin.id)}
 				{@const changeClass = getChangeClass(coin.price_change_percentage_24h)}
 				<div
 					class={`crypto-item ${dragOverId === coin.id ? 'drag-over' : ''} ${
@@ -196,6 +202,12 @@
 				</div>
 			{/each}
 		</div>
+		{#if hasMore}
+			<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
+				{expanded ? commonT.showLess : commonT.showMore}
+				{#if !expanded}<span class="show-more-count">({moreCount})</span>{/if}
+			</button>
+		{/if}
 	{/if}
 
 	<div class="crypto-footer">
@@ -432,6 +444,32 @@
 	.max-hint {
 		font-size: 0.6rem;
 		color: var(--text-muted);
+	}
+
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
 	}
 
 	.add-coin-content {

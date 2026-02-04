@@ -59,7 +59,11 @@
 
 	const title = $derived(getPanelName('fed', $settings.locale));
 	const t = $derived(UI_TEXTS[$settings.locale].fed);
+	const tagsT = $derived(UI_TEXTS[$settings.locale].tags);
 	const emptyFed = $derived(UI_TEXTS[$settings.locale].empty.fed);
+	function fedTypeLabel(type: string): string {
+		return tagsT.fedType[type] ?? type;
+	}
 </script>
 
 <Panel id="fed" {title} count={newsState.items.length} {loading} {error}>
@@ -106,7 +110,7 @@
 							<div class="video-title">{item.title}</div>
 							<div class="video-meta">
 								{#if item.isPowellRelated}
-									<Badge text="POWELL" variant="warning" />
+									<Badge text={tagsT.powell} variant="warning" />
 								{/if}
 								<span>{getRelativeTime(item.pubDate)}</span>
 							</div>
@@ -127,12 +131,12 @@
 					<div class="fed-news-item" class:powell={item.isPowellRelated}>
 						<div class="fed-news-header">
 							<div class="fed-news-badges">
-								<Badge text={item.typeLabel} variant={getTypeVariant(item.type)} />
+								<Badge text={fedTypeLabel(item.type)} variant={getTypeVariant(item.type)} />
 								{#if item.isPowellRelated && item.type !== 'powell'}
-									<Badge text="POWELL" variant="warning" />
+									<Badge text={tagsT.powell} variant="warning" />
 								{/if}
 								{#if item.hasVideo}
-									<Badge text="VIDEO" variant="info" />
+									<Badge text={tagsT.video} variant="info" />
 								{/if}
 							</div>
 							{#if item.pubDate}

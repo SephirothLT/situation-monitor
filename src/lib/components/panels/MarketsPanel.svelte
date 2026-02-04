@@ -12,7 +12,7 @@
 	}
 	let { onRetry, onIndicesListChange }: Props = $props();
 
-	const DEFAULT_PREVIEW = 6;
+	const DEFAULT_PREVIEW = 10;
 	let expanded = $state(false);
 	let addModalOpen = $state(false);
 	let searchQuery = $state('');

@@ -57,7 +57,17 @@
 	const count = $derived(items.length);
 	const title = $derived(getPanelName('intel', $settings.locale));
 	const t = $derived(UI_TEXTS[$settings.locale].common);
+	const tagsT = $derived(UI_TEXTS[$settings.locale].tags);
 	const visibleItems = $derived(expanded ? items : items.slice(0, DEFAULT_PREVIEW));
+	function sourceTypeLabel(key: string): string {
+		return tagsT.intelSourceType[key] ?? key.toUpperCase();
+	}
+	function regionLabel(key: string): string {
+		return tagsT.intelRegion[key] ?? key;
+	}
+	function topicLabel(key: string): string {
+		return tagsT.intelTopic[key] ?? key;
+	}
 	const hasMore = $derived(items.length > DEFAULT_PREVIEW);
 	const moreCount = $derived(items.length - DEFAULT_PREVIEW);
 
@@ -85,14 +95,14 @@
 						<span class="intel-source">{item.source}</span>
 						<div class="intel-tags">
 							<Badge
-								text={item.sourceType.toUpperCase()}
+								text={sourceTypeLabel(item.sourceType)}
 								variant={getSourceBadgeVariant(item.sourceType)}
 							/>
 							{#each item.regions.slice(0, 2) as region}
-								<Badge text={region} variant="info" />
+								<Badge text={regionLabel(region)} variant="info" />
 							{/each}
 							{#each item.topics.slice(0, 2) as topic}
-								<Badge text={topic} />
+								<Badge text={topicLabel(topic)} />
 							{/each}
 						</div>
 					</div>

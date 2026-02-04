@@ -12,6 +12,8 @@
 
 	let { onCommodityListChange }: Props = $props();
 
+	const DEFAULT_PREVIEW = 10;
+	let expanded = $state(false);
 	let addModalOpen = $state(false);
 	let searchQuery = $state('');
 	let stockSearchQuery = $state('');
@@ -38,8 +40,12 @@
 		new Set(selectedList.map((i) => i.symbol.toUpperCase()))
 	);
 	const t = $derived(UI_TEXTS[$settings.locale].commodityPicker);
+	const commonT = $derived(UI_TEXTS[$settings.locale].common);
 	const modalCloseLabel = $derived(UI_TEXTS[$settings.locale].modal.close);
 	const emptyCommodities = $derived(UI_TEXTS[$settings.locale].empty.commodities);
+	const visibleItems = $derived(expanded ? items : items.slice(0, DEFAULT_PREVIEW));
+	const hasMore = $derived(items.length > DEFAULT_PREVIEW);
+	const moreCount = $derived(items.length - DEFAULT_PREVIEW);
 
 	// Preset options filtered by search (symbol/name), excluding already-selected
 	const availableOptions = $derived(
@@ -225,7 +231,7 @@
 		<div class="empty-state">{emptyCommodities}</div>
 	{:else}
 		<div class="commodities-list">
-			{#each items as item (item.symbol)}
+			{#each visibleItems as item (item.symbol)}
 				<div
 					class={`commodity-item ${dragOverSymbol === item.symbol ? 'drag-over' : ''} ${
 						draggingSymbol === item.symbol || pressedSymbol === item.symbol ? 'dragging' : ''
@@ -261,6 +267,12 @@
 				</div>
 			{/each}
 		</div>
+		{#if hasMore}
+			<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
+				{expanded ? commonT.showLess : commonT.showMore}
+				{#if !expanded}<span class="show-more-count">({moreCount})</span>{/if}
+			</button>
+		{/if}
 	{/if}
 
 	<div class="commodities-footer">
@@ -446,6 +458,32 @@
 	.max-hint {
 		font-size: 0.6rem;
 		color: var(--text-muted);
+	}
+
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
 	}
 
 	.add-commodity-content {

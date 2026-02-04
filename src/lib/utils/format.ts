@@ -3,10 +3,28 @@
  */
 
 /**
+ * Parse date from various formats (ISO, GDELT 20251202T224500Z, timestamp)
+ */
+function parseDate(dateInput: string | number | Date): Date {
+	if (dateInput instanceof Date) return dateInput;
+	if (typeof dateInput === 'number') return new Date(dateInput);
+	const str = String(dateInput).trim();
+	if (!str) return new Date(NaN);
+	// GDELT format: 20251202T224500Z → 2025-12-02T22:45:00Z
+	const gdelt = str.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+	if (gdelt) {
+		const [, y, m, d, h, min, s] = gdelt;
+		return new Date(`${y}-${m}-${d}T${h}:${min}:${s}Z`);
+	}
+	return new Date(str);
+}
+
+/**
  * Format relative time from a date
  */
 export function timeAgo(dateInput: string | number | Date): string {
-	const date = new Date(dateInput);
+	const date = parseDate(dateInput);
+	if (Number.isNaN(date.getTime())) return '—';
 	const now = new Date();
 	const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
@@ -20,7 +38,8 @@ export function timeAgo(dateInput: string | number | Date): string {
  * Get relative time with more detail
  */
 export function getRelativeTime(dateInput: string | number | Date): string {
-	const date = new Date(dateInput);
+	const date = parseDate(dateInput);
+	if (Number.isNaN(date.getTime())) return '—';
 	const now = new Date();
 	const diff = now.getTime() - date.getTime();
 	const hours = Math.floor(diff / (1000 * 60 * 60));
