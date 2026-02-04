@@ -5,6 +5,7 @@
 	import { getPanelName, CRYPTO_OPTIONS, UI_TEXTS } from '$lib/config';
 	import { formatCurrency, formatPercentChange, getChangeClass } from '$lib/utils';
 	import { searchCoins } from '$lib/api/coingecko';
+	import { flip } from 'svelte/animate';
 
 	interface Props {
 		onCryptoListChange?: () => void;
@@ -159,6 +160,7 @@
 					class={`crypto-item ${dragOverId === coin.id ? 'drag-over' : ''} ${
 						draggingId === coin.id || pressedId === coin.id ? 'dragging' : ''
 					}`}
+					animate:flip={{ duration: 180 }}
 					draggable="true"
 					role="listitem"
 					aria-grabbed={draggingId === coin.id}

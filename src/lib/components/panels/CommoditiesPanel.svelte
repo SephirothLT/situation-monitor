@@ -4,6 +4,7 @@
 	import { commodities, vix, settings, commodityList } from '$lib/stores';
 	import { getPanelName, UI_TEXTS, COMMODITY_OPTIONS } from '$lib/config';
 	import { searchSymbols } from '$lib/api/twelveData';
+	import { flip } from 'svelte/animate';
 
 	interface Props {
 		onCommodityListChange?: () => void;
@@ -229,6 +230,7 @@
 					class={`commodity-item ${dragOverSymbol === item.symbol ? 'drag-over' : ''} ${
 						draggingSymbol === item.symbol || pressedSymbol === item.symbol ? 'dragging' : ''
 					}`}
+					animate:flip={{ duration: 180 }}
 					draggable="true"
 					role="listitem"
 					aria-grabbed={draggingSymbol === item.symbol}

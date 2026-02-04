@@ -87,6 +87,7 @@
 	let layoffs = $state<Layoff[]>([]);
 	let leaders = $state<WorldLeader[]>([]);
 	let leadersLoading = $state(false);
+	let aiRefreshTick = $state(0);
 
 	// Data fetching (silent = true: do not set loading state to avoid panel flash)
 	async function loadNews(silent = false) {
@@ -196,6 +197,8 @@
 			if (!silent) refresh.endRefresh([String(error)]);
 			// silent refresh on error: still update lastRefresh so next interval is correct
 			else refresh.updateLastRefresh();
+		} finally {
+			aiRefreshTick += 1;
 		}
 	}
 
@@ -405,6 +408,8 @@
 				refresh.endRefresh();
 			} catch (error) {
 				refresh.endRefresh([String(error)]);
+			} finally {
+				aiRefreshTick += 1;
 			}
 		}
 		initialLoad();
@@ -530,7 +535,7 @@
 					</div>
 				{:else if panelId === 'aiInsights'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
-						<AIInsightsPanel context={aiContext} />
+						<AIInsightsPanel context={aiContext} refreshTick={aiRefreshTick} />
 					</div>
 				{:else if panelId === 'intel'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>

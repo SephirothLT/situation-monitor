@@ -4,6 +4,7 @@
 	import { indices, settings, indicesList } from '$lib/stores';
 	import { getPanelName, UI_TEXTS, INDICE_OPTIONS } from '$lib/config';
 	import { searchSymbols } from '$lib/api/twelveData';
+	import { flip } from 'svelte/animate';
 
 	interface Props {
 		onRetry?: () => void;
@@ -201,6 +202,7 @@ let searchResults = $state<{ symbol: string; name: string; exchange?: string }[]
 					class={`market-item-row ${dragOverSymbol === item.symbol ? 'drag-over' : ''} ${
 						draggingSymbol === item.symbol || pressedSymbol === item.symbol ? 'dragging' : ''
 					}`}
+					animate:flip={{ duration: 180 }}
 					draggable="true"
 					role="listitem"
 					aria-grabbed={draggingSymbol === item.symbol}

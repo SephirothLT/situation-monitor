@@ -11,14 +11,16 @@
 		context?: AIModuleContext | null;
 		loading?: boolean;
 		error?: string | null;
+		refreshTick?: number;
 	}
 
-	let { context = null, loading = false, error = null }: Props = $props();
+	let { context = null, loading = false, error = null, refreshTick = 0 }: Props = $props();
 
 	let aiSummary = $state('');
 	let aiLoading = $state(false);
 	let aiError = $state<string | null>(null);
 	let settingsModalOpen = $state(false);
+	let lastAutoTick = $state<number | null>(null);
 
 	const title = $derived(getPanelName('aiInsights', $settings.locale));
 	const empty = $derived(UI_TEXTS[$settings.locale].empty.aiInsights);
@@ -33,6 +35,15 @@
 			context !== null &&
 			(context.messageCount > 0 || summaryBullets.length > 0)
 	);
+
+	// Auto-generate summary on each refresh tick (manual or silent)
+	$effect(() => {
+		if (!canGenerate || !context) return;
+		if (aiLoading) return;
+		if (lastAutoTick === refreshTick) return;
+		lastAutoTick = refreshTick;
+		handleGenerate();
+	});
 
 	async function handleGenerate() {
 		if (!context || aiLoading) return;
