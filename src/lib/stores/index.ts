@@ -67,6 +67,9 @@ export { indicesList } from './indicesList';
 // BlockBeats store (crypto flash news)
 export { blockbeats } from './blockbeats';
 
+// CLS telegraph store (财联社电报)
+export { clsTelegraph } from './cls';
+
 // Whale addresses store (user-added wallet addresses to monitor)
 export { whaleAddresses } from './whaleAddresses';
 

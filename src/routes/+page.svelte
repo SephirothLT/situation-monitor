@@ -25,7 +25,8 @@
 		PrinterPanel,
 		FedPanel,
 		BlockBeatsPanel,
-		AIInsightsPanel
+		AIInsightsPanel,
+		ClsPanel
 	} from '$lib/components/panels';
 	import {
 		news,
@@ -38,6 +39,7 @@
 		indicesList,
 		whaleAddresses,
 		blockbeats,
+		clsTelegraph,
 		allNewsItems,
 		fedIndicators,
 		fedNews,
@@ -180,6 +182,11 @@
 		await blockbeats.load($settings.locale, silent);
 	}
 
+	async function loadClsTelegraph(silent = false) {
+		if (!isPanelVisible('cls')) return;
+		await clsTelegraph.load(silent);
+	}
+
 	/** @param silent - true = no global loading bar, no per-panel loading (used for auto-refresh) */
 	async function handleRefresh(silent = false) {
 		if (!silent) refresh.startRefresh();
@@ -189,6 +196,7 @@
 				loadMarkets(),
 				loadMiscData(silent),
 				loadBlockBeats(silent),
+				loadClsTelegraph(silent),
 				loadFedData()
 			]);
 			if (silent) refresh.updateLastRefresh();
@@ -504,6 +512,10 @@
 							title={getPanelName('ai', $settings.locale)}
 							onRetry={loadNews}
 						/>
+					</div>
+				{:else if panelId === 'cls'}
+					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
+						<ClsPanel />
 					</div>
 				{:else if panelId === 'markets'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
