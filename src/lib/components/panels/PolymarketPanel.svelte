@@ -21,20 +21,17 @@
 	let { predictions = [], loading = false, error = null, onRetry }: Props = $props();
 
 	const DEFAULT_PREVIEW = 10;
-	const LOAD_MORE_STEP = 10;
-	let showCount = $state(DEFAULT_PREVIEW);
+	let expanded = $state(false);
 
 	const count = $derived(predictions.length);
 	const title = $derived(getPanelName('polymarket', $settings.locale));
 	const emptyPolymarket = $derived(UI_TEXTS[$settings.locale].empty.polymarket);
 	const t = $derived(UI_TEXTS[$settings.locale].common);
-	const visiblePredictions = $derived(predictions.slice(0, Math.min(showCount, predictions.length)));
-	const hasMore = $derived(predictions.length > showCount);
-	const moreCount = $derived(Math.min(predictions.length - showCount, LOAD_MORE_STEP));
-
-	function loadMore() {
-		showCount += LOAD_MORE_STEP;
-	}
+	const visiblePredictions = $derived(
+		expanded ? predictions : predictions.slice(0, DEFAULT_PREVIEW)
+	);
+	const hasMore = $derived(predictions.length > DEFAULT_PREVIEW);
+	const moreCount = $derived(predictions.length - DEFAULT_PREVIEW);
 
 	function formatVolume(v: number | string): string {
 		if (typeof v === 'string') {
@@ -76,9 +73,9 @@
 			{/each}
 		</div>
 		{#if hasMore}
-			<button type="button" class="show-more-btn" onclick={loadMore}>
-				{t.showMore}
-				<span class="show-more-count">(+{moreCount})</span>
+			<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
+				{expanded ? t.showLess : t.showMore}
+				{#if !expanded}<span class="show-more-count">(+{moreCount})</span>{/if}
 			</button>
 		{/if}
 	{/if}

@@ -25,6 +25,24 @@
 			: []
 	);
 
+	const DEFAULT_PREVIEW = 10;
+	const LOAD_MORE_STEP = 10;
+	let showCount = $state(DEFAULT_PREVIEW);
+	const visibleNews = $derived(newsState.items.slice(0, showCount));
+	const hasMore = $derived(newsState.items.length > showCount);
+	const canCollapse = $derived(showCount > DEFAULT_PREVIEW);
+	const moreCount = $derived(
+		Math.min(Math.max(newsState.items.length - showCount, 0), LOAD_MORE_STEP)
+	);
+
+	function loadMore() {
+		showCount += LOAD_MORE_STEP;
+	}
+
+	function collapseNews() {
+		showCount = DEFAULT_PREVIEW;
+	}
+
 	type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 
 	const TYPE_VARIANTS: Record<string, BadgeVariant> = {
@@ -127,7 +145,7 @@
 			<div class="empty-state">{emptyFed}</div>
 		{:else}
 			<div class="fed-news-list">
-				{#each newsState.items as item (item.id)}
+				{#each visibleNews as item (item.id)}
 					<div class="fed-news-item" class:powell={item.isPowellRelated}>
 						<div class="fed-news-header">
 							<div class="fed-news-badges">
@@ -154,6 +172,17 @@
 					</div>
 				{/each}
 			</div>
+			{#if hasMore}
+				<button type="button" class="show-more-btn" onclick={loadMore}>
+					{UI_TEXTS[$settings.locale].common.showMore}
+					<span class="show-more-count">(+{moreCount})</span>
+				</button>
+			{/if}
+			{#if canCollapse}
+				<button type="button" class="show-more-btn" onclick={collapseNews}>
+					{UI_TEXTS[$settings.locale].common.showLess}
+				</button>
+			{/if}
 		{/if}
 	</div>
 </Panel>
@@ -394,6 +423,33 @@
 		font-size: 0.55rem;
 		color: var(--text-muted);
 		line-height: 1.4;
+	}
+
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
 	}
 
 	.empty-state {

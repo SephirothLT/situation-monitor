@@ -344,7 +344,7 @@
 
 	/* Smooth collapse: max-height + overflow so height changes gradually and siblings reflow smoothly */
 	.panel-content {
-		max-height: 2000px;
+		max-height: 10000px;
 		overflow: hidden;
 		transition: max-height 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 	}

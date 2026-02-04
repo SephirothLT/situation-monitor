@@ -343,6 +343,8 @@ export const UI_TEXTS: Record<
 			transactionsSection: string;
 			emptyBalance: string;
 			productionHint: string;
+			interactionLabel: string;
+			swapLabel: string;
 		};
 		/** Panel header status labels (VIX + situation threat level) */
 		status: {
@@ -648,7 +650,7 @@ export const UI_TEXTS: Record<
 		whale: {
 			addAddress: '添加地址',
 			addAddressModalTitle: '添加巨鲸地址',
-			addressPlaceholder: '粘贴钱包地址，如 0x... 或 bc1...',
+			addressPlaceholder: '粘贴钱包地址，如 0x... / bc1... / Sol 地址',
 			invalidAddress: '地址格式无效或过短',
 			maxReached: '最多 30 个地址',
 			watchedAddresses: '监控的地址',
@@ -660,7 +662,9 @@ export const UI_TEXTS: Record<
 			transactionsSection: '交易',
 			emptyBalance: '暂无余额',
 			productionHint:
-				'生产环境请在部署平台设置 VITE_ETHERSCAN_API_KEY（如 Vercel），以显示真实链上数据。'
+				'生产环境请在部署平台设置 VITE_ETHERSCAN_API_KEY（如 Vercel），以显示真实链上数据。',
+			interactionLabel: '合约交互',
+			swapLabel: 'Swap'
 		},
 		status: {
 			highFear: '高恐慌',
@@ -973,7 +977,7 @@ export const UI_TEXTS: Record<
 		whale: {
 			addAddress: 'Add address',
 			addAddressModalTitle: 'Add whale address',
-			addressPlaceholder: 'Paste wallet address, e.g. 0x... or bc1...',
+			addressPlaceholder: 'Paste wallet address, e.g. 0x... / bc1... / Sol address',
 			invalidAddress: 'Invalid or too short address',
 			maxReached: 'Max 30 addresses',
 			watchedAddresses: 'Watched addresses',
@@ -985,7 +989,9 @@ export const UI_TEXTS: Record<
 			transactionsSection: 'Transactions',
 			emptyBalance: 'No balance',
 			productionHint:
-				'In production, set VITE_ETHERSCAN_API_KEY in your build platform (e.g. Vercel) to show real chain data'
+				'In production, set VITE_ETHERSCAN_API_KEY in your build platform (e.g. Vercel) to show real chain data',
+			interactionLabel: 'Contract interaction',
+			swapLabel: 'Swap'
 		},
 		status: {
 			highFear: 'HIGH FEAR',

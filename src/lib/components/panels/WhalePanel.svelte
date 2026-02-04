@@ -4,6 +4,7 @@
 	import { settings, whaleAddresses } from '$lib/stores';
 import { getPanelName, UI_TEXTS } from '$lib/config';
 import { ETHERSCAN_API_KEY } from '$lib/config/api';
+	import { timeAgo } from '$lib/utils';
 	import type { WhaleTransaction, WhaleBalance } from '$lib/api';
 
 	interface Props {
@@ -30,7 +31,28 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 	const title = $derived(getPanelName('whales', $settings.locale));
 	const addresses = $derived($whaleAddresses);
 	const t = $derived(UI_TEXTS[$settings.locale].whale);
+	const commonT = $derived(UI_TEXTS[$settings.locale].common);
 	const modalCloseLabel = $derived(UI_TEXTS[$settings.locale].modal.close);
+	const DEFAULT_PREVIEW = 5;
+	let expanded = $state(false);
+	const shouldCollapse = $derived(whales.length > 10);
+	const visibleWhales = $derived(
+		expanded || !shouldCollapse ? whales : whales.slice(0, DEFAULT_PREVIEW)
+	);
+	const hasMore = $derived(shouldCollapse);
+	const moreCount = $derived(whales.length - DEFAULT_PREVIEW);
+
+	const SWAP_METHOD_IDS = new Set(['0x38ed1739', '0x414bf389']);
+
+	function getInteractionLabel(whale: WhaleTransaction): string | null {
+		if (whale.amount !== 0) return null;
+		const fn = whale.functionName?.toLowerCase() ?? '';
+		const isSwap =
+			(whale.methodId && SWAP_METHOD_IDS.has(whale.methodId)) ||
+			fn.includes('swap') ||
+			fn.includes('exactinput');
+		return isSwap ? t.swapLabel : t.interactionLabel;
+	}
 
 	const canAddMore = $derived(addresses.length < 30);
 
@@ -70,13 +92,30 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 		return /^0x[a-fA-F0-9]{40}$/.test((addr || '').trim());
 	}
 
+	function isBtcAddress(addr: string): boolean {
+		return (
+			/^[13bc][a-km-zA-HJ-NP-Z1-9]{25,}$/.test((addr || '').trim()) ||
+			/^bc1[a-zA-HJ-NP-Z0-9]{25,}$/.test((addr || '').trim())
+		);
+	}
+
+	function isSolAddress(addr: string): boolean {
+		const a = (addr || '').trim();
+		return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a) && !isEthAddress(a) && !isBtcAddress(a);
+	}
+
 	function isEthTxHash(hash: string): boolean {
 		return /^0x[a-fA-F0-9]{64}$/.test((hash || '').trim());
+	}
+
+	function isSolTxHash(hash: string): boolean {
+		return /^[1-9A-HJ-NP-Za-km-z]{32,88}$/.test((hash || '').trim());
 	}
 
 	function addressExplorerUrl(addr: string): string | null {
 		const a = (addr || '').trim();
 		if (isEthAddress(a)) return `https://etherscan.io/address/${a}`;
+		if (isSolAddress(a)) return `https://solscan.io/account/${a}`;
 		if (/^[13bc][a-km-zA-HJ-NP-Z1-9]{25,}$/.test(a) || /^bc1[a-zA-HJ-NP-Z0-9]{25,}$/.test(a))
 			return `https://blockstream.info/address/${a}`;
 		return null;
@@ -85,6 +124,8 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 	function txExplorerUrl(hash: string): string | null {
 		const h = (hash || '').trim();
 		if (isEthTxHash(h)) return `https://etherscan.io/tx/${h}`;
+		if (isSolTxHash(h)) return `https://solscan.io/tx/${h}`;
+		if (/^[a-f0-9]{64}$/i.test(h)) return `https://blockstream.info/tx/${h}`;
 		return null;
 	}
 </script>
@@ -189,12 +230,15 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 			<div class="empty-state">{t.emptyTx}</div>
 		{:else if whales.length > 0}
 			<div class="whale-list">
-				{#each whales as whale, i (whale.hash + i)}
+				{#each visibleWhales as whale, i (whale.hash + i)}
 					<div class="whale-item">
 						<div class="whale-main">
 							<div class="whale-header">
 								<span class="whale-coin">{whale.coin}</span>
 								<span class="whale-amount">{formatAmount(whale.amount)} {whale.coin}</span>
+								{#if getInteractionLabel(whale)}
+									<span class="whale-tag">{getInteractionLabel(whale)}</span>
+								{/if}
 							</div>
 							<div class="whale-flow">
 								{#if whale.fromAddress}
@@ -229,6 +273,9 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 								<span class="whale-usd">{formatUSD(whale.usd)}</span>
 							</div>
 							<div class="whale-hash-row">
+								{#if whale.timestamp}
+									<span class="whale-time">{timeAgo(whale.timestamp)}</span>
+								{/if}
 								{#if txExplorerUrl(whale.hash)}
 									<a
 										href={txExplorerUrl(whale.hash)!}
@@ -247,6 +294,12 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 					</div>
 				{/each}
 			</div>
+			{#if hasMore}
+				<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
+					{expanded ? commonT.showLess : commonT.showMore}
+					{#if !expanded}<span class="show-more-count">({moreCount})</span>{/if}
+				</button>
+			{/if}
 		{/if}
 	</div>
 	{#if t.productionHint && !ETHERSCAN_API_KEY.trim()}
@@ -359,6 +412,32 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 		color: var(--text-muted);
 	}
 
+	.show-more-btn {
+		margin-top: 0.5rem;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.65rem;
+		color: var(--accent);
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		border-color: var(--accent);
+	}
+
+	.show-more-count {
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-left: 0.25rem;
+	}
+
 	.whale-list {
 		display: flex;
 		flex-direction: column;
@@ -382,6 +461,16 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 0.25rem;
+	}
+
+	.whale-tag {
+		font-size: 0.5rem;
+		padding: 0.1rem 0.3rem;
+		border-radius: 3px;
+		background: rgba(var(--accent-rgb), 0.15);
+		color: var(--accent);
+		font-weight: 600;
+		white-space: nowrap;
 	}
 
 	.whale-coin {
@@ -465,6 +554,14 @@ import { ETHERSCAN_API_KEY } from '$lib/config/api';
 
 	.whale-hash-row {
 		margin-top: 0.2rem;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.whale-time {
+		font-size: 0.55rem;
+		color: var(--text-muted);
 	}
 
 	.whale-hash {
