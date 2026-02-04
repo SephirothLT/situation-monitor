@@ -344,19 +344,21 @@
 
 	/* Smooth collapse: max-height + overflow so height changes gradually and siblings reflow smoothly */
 	.panel-content {
-		max-height: 10000px;
-		overflow: hidden;
+		max-height: 70vh;
+		overflow-x: hidden;
+		overflow-y: auto;
 		transition: max-height 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 	}
 
 	.panel-content.collapsed {
 		max-height: 0;
+		overflow: hidden;
 		transition: max-height 0.38s cubic-bezier(0.32, 0.72, 0, 1);
 	}
 
 	.panel-content-inner {
-		overflow-y: auto;
 		padding: 0.5rem;
+		box-sizing: border-box;
 	}
 
 	.error-msg {
