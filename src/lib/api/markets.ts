@@ -248,13 +248,9 @@ export async function fetchCryptoPrices(coins?: CryptoOption[]): Promise<CryptoI
 		const symbols = list.map((c) => c.symbol).join(',');
 		const cmcProxyUrl = `${apiBase}/api/coinmarketcap/quotes?symbol=${encodeURIComponent(symbols)}`;
 		const response = await fetch(cmcProxyUrl);
-		let cmcDataKeys: string[] = [];
-		let cmcItemsLen: number | null = null;
-		let cmcFirstPrice: number | null = null;
 		if (response.ok) {
 			const json = await response.json();
 			const data = json?.data as Record<string, { symbol?: string; quote?: { USD?: { price?: number; percent_change_24h?: number } } }> | undefined;
-			cmcDataKeys = data && typeof data === 'object' ? Object.keys(data) : [];
 			if (data && typeof data === 'object' && Object.keys(data).length > 0) {
 				// CMC may key by symbol ("BTC") or by id ("1", "1027"); find by symbol
 				const bySymbol = (sym: string) =>
@@ -274,8 +270,6 @@ export async function fetchCryptoPrices(coins?: CryptoOption[]): Promise<CryptoI
 						price_change_percentage_24h: change
 					};
 				});
-				cmcItemsLen = items.length;
-				cmcFirstPrice = items[0]?.current_price ?? null;
 				lastCryptoSuccess = items;
 				return items;
 			}
@@ -484,64 +478,12 @@ export async function fetchAllMarkets(
 	commodityConfigs?: CommodityConfig[],
 	indicesConfig?: IndexConfig[]
 ): Promise<AllMarketsData> {
-	// #region agent log
-	const start = Date.now();
-	fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			location: 'markets.ts:fetchAllMarkets',
-			message: 'start',
-			data: {
-				cryptoCount: cryptoCoins?.length ?? null,
-				commodityCount: commodityConfigs?.length ?? null,
-				indicesCount: indicesConfig?.length ?? null
-			},
-			timestamp: Date.now(),
-			sessionId: 'debug-session',
-			hypothesisId: 'A'
-		})
-	}).catch(() => {});
-	// #endregion
-	const timed = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
-		const t0 = Date.now();
-		const result = await fn();
-		// #region agent log
-		fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				location: 'markets.ts:fetchAllMarkets',
-				message: 'source done',
-				data: { label, durationMs: Date.now() - t0 },
-				timestamp: Date.now(),
-				sessionId: 'debug-session',
-				hypothesisId: 'B'
-			})
-		}).catch(() => {});
-		// #endregion
-		return result;
-	};
 	const [crypto, indices, sectors, commodities] = await Promise.all([
-		timed('crypto', () => fetchCryptoPrices(cryptoCoins)),
-		timed('indices', () => fetchIndices(indicesConfig)),
-		timed('sectors', () => fetchSectorPerformance()),
-		timed('commodities', () => fetchCommodities(commodityConfigs))
+		fetchCryptoPrices(cryptoCoins),
+		fetchIndices(indicesConfig),
+		fetchSectorPerformance(),
+		fetchCommodities(commodityConfigs)
 	]);
-	// #region agent log
-	fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			location: 'markets.ts:fetchAllMarkets',
-			message: 'end',
-			data: { durationMs: Date.now() - start },
-			timestamp: Date.now(),
-			sessionId: 'debug-session',
-			hypothesisId: 'C'
-		})
-	}).catch(() => {});
-	// #endregion
 
 	return { crypto, indices, sectors, commodities };
 }

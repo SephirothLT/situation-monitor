@@ -85,20 +85,6 @@ function createCommodityListStore() {
 			if (!symbol) return false;
 			let added = false;
 			update((list) => {
-				// #region agent log
-				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						location: 'stores/commodityList.ts:addCommodity',
-						message: 'addCommodity update',
-						data: { symbol, listLen: list.length },
-						timestamp: Date.now(),
-						sessionId: 'debug-session',
-						hypothesisId: 'A'
-					})
-				}).catch(() => {});
-				// #endregion
 				if (list.some((i) => i.symbol.toUpperCase() === symbol.toUpperCase())) return list;
 				if (list.length >= MAX_COMMODITIES) return list;
 				added = true;
@@ -118,20 +104,6 @@ function createCommodityListStore() {
 
 		removeCommodity(symbol: string): void {
 			update((list) => {
-				// #region agent log
-				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						location: 'stores/commodityList.ts:removeCommodity',
-						message: 'removeCommodity update',
-						data: { symbol, listLen: list.length },
-						timestamp: Date.now(),
-						sessionId: 'debug-session',
-						hypothesisId: 'A'
-					})
-				}).catch(() => {});
-				// #endregion
 				const next = list.filter((i) => i.symbol !== symbol);
 				if (next.length === 0) {
 					save(defaultList);

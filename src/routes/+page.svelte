@@ -111,27 +111,8 @@
 	}
 
 	async function loadMarkets() {
-		// #region agent log
 		const loadMarketsStart = Date.now();
 		const seq = ++marketsLoadSeq;
-		fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				location: '+page.svelte:loadMarkets',
-				message: 'start',
-				data: {
-					seq,
-					cryptoCount: cryptoList.getSelectedConfig().length,
-					indicesCount: indicesList.getSelectedConfig().length,
-					commoditiesCount: commodityList.getSelectedConfig().length
-				},
-				timestamp: Date.now(),
-				sessionId: 'debug-session',
-				hypothesisId: 'B'
-			})
-		}).catch(() => {});
-		// #endregion
 		let data:
 			| Awaited<ReturnType<typeof fetchAllMarkets>>
 			| null = null;
@@ -191,24 +172,6 @@
 			optimisticIndices = nextIndices;
 			optimisticCommodities = nextCommodities;
 			optimisticCrypto = nextCrypto;
-			// #region agent log
-			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: '+page.svelte:loadMarkets',
-					message: 'optimistic sync',
-					data: {
-						nextIndices: nextIndices.length,
-						nextCommodities: nextCommodities.length,
-						nextCrypto: nextCrypto.length
-					},
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					hypothesisId: 'C'
-				})
-			}).catch(() => {});
-			// #endregion
 			const cryptoPromise = fetchCryptoPrices(cryptoCoins);
 			const indicesPromise = fetchIndices(indicesConfig);
 			const sectorsPromise = fetchSectorPerformance();
@@ -221,20 +184,6 @@
 			]);
 
 			if (seq !== marketsLoadSeq) {
-				// #region agent log
-				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						location: '+page.svelte:loadMarkets',
-						message: 'stale result dropped',
-						data: { seq, current: marketsLoadSeq },
-						timestamp: Date.now(),
-						sessionId: 'debug-session',
-						hypothesisId: 'D'
-					})
-				}).catch(() => {});
-				// #endregion
 				return;
 			}
 
@@ -259,45 +208,12 @@
 					optimisticCommodities.find((i) => i.symbol === sel.symbol)
 				);
 			});
-			// #region agent log
-			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: '+page.svelte:loadMarkets',
-					message: 'merge result (fast)',
-					data: {
-						seq,
-						mergedCommoditiesLen: mergedCommodities.length,
-						mergedIndicesLen: mergedIndices.length
-					},
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					hypothesisId: 'C'
-				})
-			}).catch(() => {});
-			// #endregion
-
 			markets.setIndices(mergedIndices);
 			markets.setSectors(sectorsData);
 			markets.setCommodities(mergedCommodities);
 
 			const cryptoData = await cryptoPromise;
 			if (seq !== marketsLoadSeq) {
-				// #region agent log
-				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						location: '+page.svelte:loadMarkets',
-						message: 'stale crypto result dropped',
-						data: { seq, current: marketsLoadSeq },
-						timestamp: Date.now(),
-						sessionId: 'debug-session',
-						hypothesisId: 'D'
-					})
-				}).catch(() => {});
-				// #endregion
 				return;
 			}
 			missingCrypto = cryptoCoins
@@ -310,23 +226,6 @@
 					optimisticCrypto.find((i) => i.id === sel.id)
 				);
 			});
-			// #region agent log
-			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: '+page.svelte:loadMarkets',
-					message: 'merge result (crypto)',
-					data: {
-						seq,
-						mergedCryptoLen: mergedCrypto.length
-					},
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					hypothesisId: 'C'
-				})
-			}).catch(() => {});
-			// #endregion
 			markets.setCrypto(mergedCrypto);
 
 			data = {
@@ -338,28 +237,7 @@
 		} catch (error) {
 			console.error('Failed to load markets:', error);
 		} finally {
-			// #region agent log
-			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: '+page.svelte:loadMarkets',
-					message: 'end',
-					data: {
-						durationMs: Date.now() - loadMarketsStart,
-						cryptoLen: data?.crypto?.length ?? null,
-						commoditiesLen: data?.commodities?.length ?? null,
-						indicesLen: data?.indices?.length ?? null,
-						missingCrypto,
-						missingCommodities,
-						missingIndices
-					},
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					hypothesisId: 'B'
-				})
-			}).catch(() => {});
-			// #endregion
+			void loadMarketsStart;
 		}
 	}
 
@@ -578,6 +456,72 @@
 
 	let longPressTimer = $state<ReturnType<typeof setTimeout> | null>(null);
 	let marketsLoadSeq = 0;
+	let cryptoRefreshInFlight = false;
+	let cryptoRefreshRequested = false;
+	let lastFetchedCryptoIds: string[] = [];
+
+	async function refreshCryptoOnly() {
+		cryptoRefreshRequested = true;
+		const cryptoCoinsNow = cryptoList.getSelectedConfig();
+		const currentCryptoNow = get(crypto).items;
+		const nextCryptoNow = cryptoCoinsNow.map((sel) => {
+			return (
+				currentCryptoNow.find((i) => i.id === sel.id) ?? {
+					id: sel.id,
+					symbol: sel.symbol,
+					name: sel.name,
+					current_price: 0,
+					price_change_24h: 0,
+					price_change_percentage_24h: 0
+				}
+			);
+		});
+		markets.setCrypto(nextCryptoNow);
+		if (cryptoRefreshInFlight) return;
+		cryptoRefreshInFlight = true;
+
+		while (cryptoRefreshRequested) {
+			cryptoRefreshRequested = false;
+			const cryptoCoins = cryptoList.getSelectedConfig();
+			const currentIds = cryptoCoins.map((c) => c.id);
+			const addedIds = currentIds.filter((id) => !lastFetchedCryptoIds.includes(id));
+			lastFetchedCryptoIds = currentIds;
+
+			const t0 = Date.now();
+
+			if (addedIds.length === 0) {
+				void t0;
+				continue;
+			}
+
+			const addedCoins = cryptoCoins.filter((c) => addedIds.includes(c.id));
+			const cryptoData = await fetchCryptoPrices(addedCoins);
+			const latestCoins = cryptoList.getSelectedConfig();
+			const latestItems = get(crypto).items;
+			const mergedCrypto = latestCoins.map((sel) => {
+				return (
+					cryptoData.find((i) => i.id === sel.id) ??
+					latestItems.find((i) => i.id === sel.id) ?? {
+						id: sel.id,
+						symbol: sel.symbol,
+						name: sel.name,
+						current_price: 0,
+						price_change_24h: 0,
+						price_change_percentage_24h: 0
+					}
+				);
+			});
+			markets.setCrypto(mergedCrypto);
+
+			void t0;
+		}
+
+		cryptoRefreshInFlight = false;
+	}
+
+	function handleCryptoListChange() {
+		refreshCryptoOnly();
+	}
 
 	function handleSlotPointerDown(panelId: PanelId, e: PointerEvent) {
 		if (NON_DRAGGABLE_PANELS.includes(panelId)) return;
@@ -774,7 +718,7 @@
 					</div>
 				{:else if panelId === 'crypto'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
-						<CryptoPanel onCryptoListChange={loadMarkets} />
+						<CryptoPanel onCryptoListChange={handleCryptoListChange} />
 					</div>
 				{:else if panelId === 'mainchar'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
