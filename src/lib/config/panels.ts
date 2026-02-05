@@ -12,7 +12,6 @@ export type PanelId =
 	| 'politics'
 	| 'tech'
 	| 'finance'
-	| 'cls'
 	| 'gov'
 	| 'heatmap'
 	| 'markets'
@@ -42,7 +41,6 @@ export const PANELS: Record<PanelId, PanelConfig> = {
 	politics: { name: '国际 / 地缘', priority: 1 },
 	tech: { name: '科技 / AI', priority: 1 },
 	finance: { name: '财经', priority: 1 },
-	cls: { name: '财联社电报', priority: 1 },
 	gov: { name: '政府 / 政策', priority: 2 },
 	heatmap: { name: '板块热力图', priority: 1 },
 	markets: { name: '市场', priority: 1 },
@@ -76,7 +74,6 @@ export const PANEL_ORDER: PanelId[] = [
 	'politics',
 	'tech',
 	'finance',
-	'cls',
 	'gov',
 	'ai',
 	'markets',

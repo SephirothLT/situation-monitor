@@ -80,7 +80,6 @@ export const PRESETS: Record<string, Preset> = {
 			'politics',
 			'tech',
 			'finance',
-			'cls',
 			'gov',
 			'heatmap',
 			'markets',

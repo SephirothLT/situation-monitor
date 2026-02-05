@@ -3,7 +3,6 @@
  * Note: Some of these use mock data as the original APIs require authentication
  */
 
-import { base } from '$app/paths';
 import {
 	ETHERSCAN_API_BASE,
 	ETHERSCAN_API_KEY,
@@ -11,8 +10,6 @@ import {
 	INTELLIZENCE_API_KEY,
 	INTELLIZENCE_LAYOFF_URL
 } from '$lib/config/api';
-
-const apiBase = base || '';
 
 export interface Prediction {
 	id: string;
@@ -28,9 +25,6 @@ export interface WhaleTransaction {
 	amount: number;
 	usd: number;
 	hash: string;
-	timestamp?: number;
-	methodId?: string;
-	functionName?: string;
 	/** Sender address (whale address when monitoring) */
 	fromAddress?: string;
 	/** Receiver address */
@@ -69,13 +63,11 @@ const WHALE_SOL_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const WHALE_MAX_ETH_ADDRESSES = 5;
 const WHALE_MAX_BTC_ADDRESSES = 5;
 const WHALE_MAX_SOL_ADDRESSES = 5;
-const WHALE_TX_PER_ADDRESS = 5;
+const WHALE_TX_PER_ADDRESS = 15;
 const WEI_PER_ETH = 1e18;
 const LAMPORTS_PER_SOL = 1e9;
 
-/** CoinGecko: prefer server proxy; fallback URL for static deploy or when proxy fails */
-const COINGECKO_PRICE_PROXY = `${apiBase}/api/coingecko/simple-price?ids=ethereum,bitcoin,solana&vs_currencies=usd`;
-const COINGECKO_PRICE_DIRECT =
+const COINGECKO_PRICE_URL =
 	'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,solana&vs_currencies=usd';
 
 function isEthAddress(addr: string): boolean {
@@ -92,67 +84,29 @@ function isSolAddress(addr: string): boolean {
 }
 
 async function getPricesUsd(): Promise<{ eth: number; btc: number; sol: number }> {
-	const fallback = { eth: 3000, btc: 100000, sol: 150 };
-	function parse(data: unknown): { eth: number; btc: number; sol: number } {
-		const o = data as {
+	try {
+		let res = await fetch(COINGECKO_PRICE_URL, { cache: 'no-store' });
+		if (!res.ok) {
+			try {
+				res = await fetchWithProxy(COINGECKO_PRICE_URL);
+			} catch {
+				return { eth: 3000, btc: 100000, sol: 150 };
+			}
+		}
+		if (!res.ok) return { eth: 3000, btc: 100000, sol: 150 };
+		const data = (await res.json()) as {
 			ethereum?: { usd?: number };
 			bitcoin?: { usd?: number };
 			solana?: { usd?: number };
-			error?: string;
 		};
-		if (o?.error) return fallback;
 		return {
-			eth: o?.ethereum?.usd && o.ethereum.usd > 0 ? o.ethereum.usd : 3000,
-			btc: o?.bitcoin?.usd && o.bitcoin.usd > 0 ? o.bitcoin.usd : 100000,
-			sol: o?.solana?.usd && o.solana.usd > 0 ? o.solana.usd : 150
+			eth: data?.ethereum?.usd && data.ethereum.usd > 0 ? data.ethereum.usd : 3000,
+			btc: data?.bitcoin?.usd && data.bitcoin.usd > 0 ? data.bitcoin.usd : 100000,
+			sol: data?.solana?.usd && data.solana.usd > 0 ? data.solana.usd : 150
 		};
-	}
-	try {
-		let res = await fetch(COINGECKO_PRICE_PROXY);
-		if (res.ok) {
-			const data = await res.json();
-			return parse(data);
-		}
 	} catch {
-		// Proxy unavailable (e.g. static build)
+		return { eth: 3000, btc: 100000, sol: 150 };
 	}
-	try {
-		const res = await fetchWithProxy(COINGECKO_PRICE_DIRECT);
-		if (res.ok) {
-			const data = await res.json();
-			return parse(data);
-		}
-	} catch {
-		// ignore
-	}
-	// CoinMarketCap fallback via server proxy
-	try {
-		const res = await fetch(
-			`${apiBase}/api/coinmarketcap/quotes?symbol=${encodeURIComponent('BTC,ETH,SOL')}`
-		);
-		if (res.ok) {
-			const json = (await res.json()) as {
-				data?: Record<string, { symbol?: string; quote?: { USD?: { price?: number } } }>;
-			};
-			const d = json?.data;
-			if (d && typeof d === 'object') {
-				const get = (sym: string) =>
-					d[sym]?.quote?.USD?.price ??
-					Object.values(d).find((v) => v?.symbol === sym)?.quote?.USD?.price;
-				const eth = get('ETH');
-				const btc = get('BTC');
-				const sol = get('SOL');
-				return {
-					eth: typeof eth === 'number' && eth > 0 ? eth : fallback.eth,
-					btc: typeof btc === 'number' && btc > 0 ? btc : fallback.btc,
-					sol: typeof sol === 'number' && sol > 0 ? sol : fallback.sol
-				};
-			}
-		}
-	} catch {
-		// ignore
-	}
-	return fallback;
 }
 
 /** Etherscan txlist result item */
@@ -162,8 +116,6 @@ interface EtherscanTx {
 	to?: string;
 	value?: string;
 	timeStamp?: string;
-	methodId?: string;
-	functionName?: string;
 }
 
 /** Fetch ETH/BTC/SOL prices (USD) from CoinGecko. */
@@ -182,36 +134,6 @@ async function getSolPriceUsd(): Promise<number> {
 	return prices.sol;
 }
 
-async function callSolanaRpc<T>(method: string, params: unknown[]): Promise<T | null> {
-	const payload = {
-		jsonrpc: '2.0',
-		id: 1,
-		method,
-		params
-	};
-	// Try local proxy first (avoids CORS in dev)
-	try {
-		const res = await fetch('/api/solana-rpc', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload)
-		});
-		const text = await res.text();
-		if (res.ok) {
-			return JSON.parse(text) as T;
-		}
-		try {
-			const err = JSON.parse(text) as { error?: string; lastError?: unknown };
-			console.warn('[Whales][SOL] RPC error', method, err);
-		} catch {
-			console.warn('[Whales][SOL] RPC error', method, text);
-		}
-	} catch {
-		// ignore
-	}
-	return null;
-}
-
 /**
  * Fetch whale transactions: when VITE_ETHERSCAN_API_KEY is set and addresses include ETH (0x…), use Etherscan txlist;
  * otherwise return empty list.
@@ -223,7 +145,6 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 	const solAddrs = addrs.filter(isSolAddress).slice(0, WHALE_MAX_SOL_ADDRESSES);
 
 	const out: WhaleTransaction[] = [];
-	const errors: string[] = [];
 
 	if (ETHERSCAN_API_KEY.trim() && ethAddrs.length > 0) {
 		try {
@@ -240,58 +161,34 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 					sort: 'desc'
 				});
 				const url = `${ETHERSCAN_API_BASE}?${params}`;
-				let res: Response | null = null;
-				// Prefer server proxy to avoid CORS
-				try {
-					res = await fetch(`/api/etherscan?${params.toString()}`);
-				} catch {
-					res = null;
-				}
-				if (!res || !res.ok) {
-					try {
-						res = await fetch(url, { cache: 'no-store' });
-					} catch {
-						res = null;
-					}
-				}
-				if (!res || !res.ok) {
+				let res = await fetch(url, { cache: 'no-store' });
+				if (!res.ok) {
 					try {
 						res = await fetchWithProxy(url);
 					} catch {
 						continue;
 					}
 				}
-				if (!res || !res.ok) {
-					errors.push(`ETH txlist failed for ${address}`);
-					continue;
-				}
-				const data = (await res.json()) as { status?: string; message?: string; result?: EtherscanTx[] };
-				if (data?.status === '0' && data?.message && data.message !== 'No transactions found') {
-					errors.push(`ETH txlist error for ${address}: ${data.message}`);
-					continue;
-				}
+				if (!res.ok) continue;
+				const data = (await res.json()) as { status?: string; result?: EtherscanTx[] };
 				const list = Array.isArray(data?.result) ? data.result : [];
 				for (const tx of list) {
 					const valueWei = tx.value ? String(tx.value).trim() : '0';
 					const valueEth = parseInt(valueWei, 10) / WEI_PER_ETH;
-					if (!tx.hash) continue;
-					const timestamp = tx.timeStamp ? Number(tx.timeStamp) * 1000 : undefined;
+					if (valueEth <= 0 || !tx.hash) continue;
 					const usd = Math.round(valueEth * ethPrice);
 					out.push({
 						coin: 'ETH',
 						amount: Math.round(valueEth * 10000) / 10000,
 						usd,
 						hash: tx.hash,
-						timestamp,
-						methodId: tx.methodId ?? undefined,
-						functionName: tx.functionName ?? undefined,
 						fromAddress: tx.from ?? undefined,
 						toAddress: tx.to ?? undefined
 					});
 				}
 			}
 		} catch {
-			errors.push('ETH txlist exception');
+			// Fall through to mock
 		}
 	}
 
@@ -308,15 +205,11 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 						continue;
 					}
 				}
-				if (!res.ok) {
-					errors.push(`BTC txs failed for ${address}`);
-					continue;
-				}
+				if (!res.ok) continue;
 				const txs = (await res.json()) as Array<{
 					txid: string;
 					vin: Array<{ prevout?: { scriptpubkey_address?: string; value?: number } }>;
 					vout: Array<{ scriptpubkey_address?: string; value?: number }>;
-					status?: { block_time?: number };
 				}>;
 				for (const tx of txs.slice(0, WHALE_TX_PER_ADDRESS)) {
 					const inSum = tx.vin.reduce((sum, v) => {
@@ -337,20 +230,18 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 						deltaSats < 0 ? address : tx.vin.find((v) => v.prevout?.scriptpubkey_address)?.prevout?.scriptpubkey_address;
 					const toAddress =
 						deltaSats > 0 ? address : tx.vout.find((v) => v.scriptpubkey_address)?.scriptpubkey_address;
-					const timestamp = tx.status?.block_time ? tx.status.block_time * 1000 : undefined;
 					out.push({
 						coin: 'BTC',
 						amount: Math.round(amount * 10000) / 10000,
 						usd,
 						hash: tx.txid,
-						timestamp,
 						fromAddress,
 						toAddress
 					});
 				}
 			}
 		} catch {
-			errors.push('BTC txs exception');
+			// ignore BTC failures
 		}
 	}
 
@@ -358,65 +249,66 @@ export async function fetchWhaleTransactions(addresses?: string[]): Promise<Whal
 		try {
 			const solPrice = await getSolPriceUsd();
 			for (const address of solAddrs) {
-				const sigData = await callSolanaRpc<{ result?: Array<{ signature: string; blockTime?: number }> }>(
-					'getSignaturesForAddress',
-					[address, { limit: WHALE_TX_PER_ADDRESS }]
-				);
-				if (!sigData) {
-					errors.push(`SOL signatures failed for ${address}`);
-					continue;
-				}
+				const sigRes = await fetch('https://api.mainnet-beta.solana.com', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						jsonrpc: '2.0',
+						id: 1,
+						method: 'getSignaturesForAddress',
+						params: [address, { limit: WHALE_TX_PER_ADDRESS }]
+					})
+				});
+				if (!sigRes.ok) continue;
+				const sigData = (await sigRes.json()) as {
+					result?: Array<{ signature: string }>;
+				};
 				const sigs = sigData.result ?? [];
 				for (const sig of sigs) {
-					const txData = await callSolanaRpc<{
+					const txRes = await fetch('https://api.mainnet-beta.solana.com', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'getTransaction',
+							params: [sig.signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0 }]
+						})
+					});
+					if (!txRes.ok) continue;
+					const txData = (await txRes.json()) as {
 						result?: {
 							meta?: { preBalances?: number[]; postBalances?: number[] };
-							transaction?: {
-								message?: {
-									accountKeys?: Array<string | { pubkey: string; signer?: boolean }>;
-								};
-							};
+							transaction?: { message?: { accountKeys?: Array<{ pubkey: string; signer?: boolean }> } };
 						};
-					}>('getTransaction', [
-						sig.signature,
-						{ encoding: 'jsonParsed', maxSupportedTransactionVersion: 0 }
-					]);
-					if (!txData) {
-						errors.push(`SOL transaction failed for ${address}`);
-						continue;
-					}
+					};
 					const meta = txData.result?.meta;
-					const rawKeys = txData.result?.transaction?.message?.accountKeys ?? [];
-					const keys = rawKeys.map((k) => (typeof k === 'string' ? k : k.pubkey));
-					const idx = keys.findIndex((k) => k === address);
+					const keys = txData.result?.transaction?.message?.accountKeys ?? [];
+					const idx = keys.findIndex((k) => k.pubkey === address);
 					if (idx < 0 || !meta?.preBalances || !meta?.postBalances) continue;
 					const deltaLamports = meta.postBalances[idx] - meta.preBalances[idx];
+					if (deltaLamports === 0) continue;
 					const amount = Math.abs(deltaLamports) / LAMPORTS_PER_SOL;
 					const usd = Math.round(amount * solPrice);
-					const firstOther = keys.find((k) => k !== address);
+					const firstOther = keys.find((k) => k.pubkey !== address)?.pubkey;
 					const fromAddress = deltaLamports < 0 ? address : firstOther;
 					const toAddress = deltaLamports > 0 ? address : firstOther;
-					const timestamp = sig.blockTime ? sig.blockTime * 1000 : undefined;
 					out.push({
 						coin: 'SOL',
 						amount: Math.round(amount * 10000) / 10000,
 						usd,
 						hash: sig.signature,
-						timestamp,
 						fromAddress,
 						toAddress
 					});
 				}
 			}
 		} catch {
-			errors.push('SOL transactions exception');
+			// ignore SOL failures
 		}
 	}
 
-	out.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
-	if (out.length === 0 && errors.length > 0) {
-		console.warn('[Whales] No transactions returned', errors);
-	}
+	out.sort((a, b) => b.usd - a.usd);
 	return out.slice(0, 25);
 }
 
@@ -431,7 +323,6 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 	const solAddrs = addrs.filter(isSolAddress).slice(0, WHALE_MAX_SOL_ADDRESSES);
 
 	const out: WhaleBalance[] = [];
-	const errors: string[] = [];
 
 	if (ETHERSCAN_API_KEY.trim() && ethAddrs.length > 0) {
 		try {
@@ -445,36 +336,16 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 					apikey: ETHERSCAN_API_KEY.trim()
 				});
 				const url = `${ETHERSCAN_API_BASE}?${params}`;
-				let res: Response | null = null;
-				// Prefer server proxy to avoid CORS
-				try {
-					res = await fetch(`/api/etherscan?${params.toString()}`);
-				} catch {
-					res = null;
-				}
-				if (!res || !res.ok) {
-					try {
-						res = await fetch(url, { cache: 'no-store' });
-					} catch {
-						res = null;
-					}
-				}
-				if (!res || !res.ok) {
+				let res = await fetch(url, { cache: 'no-store' });
+				if (!res.ok) {
 					try {
 						res = await fetchWithProxy(url);
 					} catch {
 						continue;
 					}
 				}
-				if (!res || !res.ok) {
-					errors.push(`ETH balance failed for ${address}`);
-					continue;
-				}
-				const data = (await res.json()) as { status?: string; message?: string; result?: string };
-				if (data?.status === '0' && data?.message && data.message !== 'No transactions found') {
-					errors.push(`ETH balance error for ${address}: ${data.message}`);
-					continue;
-				}
+				if (!res.ok) continue;
+				const data = (await res.json()) as { status?: string; result?: string };
 				const weiStr = data?.result != null ? String(data.result) : '0';
 				const balanceWei = parseInt(weiStr, 10) || 0;
 				const amountEth = balanceWei / WEI_PER_ETH;
@@ -486,7 +357,7 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 				});
 			}
 		} catch {
-			errors.push('ETH balance exception');
+			// Fall through to mock
 		}
 	}
 
@@ -503,10 +374,7 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 						continue;
 					}
 				}
-				if (!res.ok) {
-					errors.push(`BTC balance failed for ${address}`);
-					continue;
-				}
+				if (!res.ok) continue;
 				const data = (await res.json()) as {
 					chain_stats?: { funded_txo_sum?: number; spent_txo_sum?: number };
 				};
@@ -522,7 +390,7 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 				});
 			}
 		} catch {
-			errors.push('BTC balance exception');
+			// ignore BTC failures
 		}
 	}
 
@@ -530,13 +398,18 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 		try {
 			const solPrice = await getSolPriceUsd();
 			for (const address of solAddrs) {
-				const data = await callSolanaRpc<{ result?: { value?: number } }>('getBalance', [
-					address
-				]);
-				if (!data) {
-					errors.push(`SOL balance failed for ${address}`);
-					continue;
-				}
+				const res = await fetch('https://api.mainnet-beta.solana.com', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						jsonrpc: '2.0',
+						id: 1,
+						method: 'getBalance',
+						params: [address]
+					})
+				});
+				if (!res.ok) continue;
+				const data = (await res.json()) as { result?: { value?: number } };
 				const lamports = data?.result?.value ?? 0;
 				const amountSol = lamports / LAMPORTS_PER_SOL;
 				const usd = Math.round(amountSol * solPrice);
@@ -547,13 +420,10 @@ export async function fetchWhaleBalances(addresses?: string[]): Promise<WhaleBal
 				});
 			}
 		} catch {
-			errors.push('SOL balance exception');
+			// ignore SOL failures
 		}
 	}
 
-	if (out.length === 0 && errors.length > 0) {
-		console.warn('[Whales] No balances returned', errors);
-	}
 	return out;
 }
 

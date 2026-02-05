@@ -25,8 +25,7 @@
 		PrinterPanel,
 		FedPanel,
 		BlockBeatsPanel,
-		AIInsightsPanel,
-		ClsPanel
+		AIInsightsPanel
 	} from '$lib/components/panels';
 	import {
 		news,
@@ -39,13 +38,11 @@
 		indicesList,
 		whaleAddresses,
 		blockbeats,
-		clsTelegraph,
 		allNewsItems,
 		fedIndicators,
 		fedNews,
 		indices,
-		crypto,
-		commodities
+		crypto
 	} from '$lib/stores';
 	import {
 		buildAIContext,
@@ -55,10 +52,7 @@
 	} from '$lib/analysis';
 	import {
 		fetchAllNews,
-		fetchCryptoPrices,
-		fetchIndices,
-		fetchSectorPerformance,
-		fetchCommodities,
+		fetchAllMarkets,
 		fetchPolymarket,
 		fetchWhaleTransactions,
 		fetchWhaleBalances,
@@ -111,133 +105,17 @@
 	}
 
 	async function loadMarkets() {
-		const loadMarketsStart = Date.now();
-		const seq = ++marketsLoadSeq;
-		let data:
-			| Awaited<ReturnType<typeof fetchAllMarkets>>
-			| null = null;
-		let missingCrypto: string[] = [];
-		let missingCommodities: string[] = [];
-		let missingIndices: string[] = [];
-		let optimisticCrypto: typeof data extends null ? [] : typeof data['crypto'] = [];
-		let optimisticCommodities: typeof data extends null ? [] : typeof data['commodities'] = [];
-		let optimisticIndices: typeof data extends null ? [] : typeof data['indices'] = [];
 		try {
 			const cryptoCoins = cryptoList.getSelectedConfig();
 			const commodityConfigs = commodityList.getSelectedConfig();
 			const indicesConfig = indicesList.getSelectedConfig();
-			// Optimistic sync: update UI immediately with selected lists
-			const currentIndices = get(indices).items;
-			const currentCommodities = get(commodities).items;
-			const currentCrypto = get(crypto).items;
-			const nextIndices = indicesConfig.map((sel) => {
-				return (
-					currentIndices.find((i) => i.symbol === sel.symbol) ?? {
-						symbol: sel.symbol,
-						name: sel.name,
-						price: NaN,
-						change: NaN,
-						changePercent: NaN,
-						type: 'index' as const
-					}
-				);
-			});
-			const nextCommodities = commodityConfigs.map((sel) => {
-				return (
-					currentCommodities.find((i) => i.symbol === sel.symbol) ?? {
-						symbol: sel.symbol,
-						name: sel.name,
-						price: NaN,
-						change: NaN,
-						changePercent: NaN,
-						type: 'commodity' as const
-					}
-				);
-			});
-			const nextCrypto = cryptoCoins.map((sel) => {
-				return (
-					currentCrypto.find((i) => i.id === sel.id) ?? {
-						id: sel.id,
-						symbol: sel.symbol,
-						name: sel.name,
-						current_price: 0,
-						price_change_24h: 0,
-						price_change_percentage_24h: 0
-					}
-				);
-			});
-			markets.setIndices(nextIndices);
-			markets.setCommodities(nextCommodities);
-			markets.setCrypto(nextCrypto);
-			optimisticIndices = nextIndices;
-			optimisticCommodities = nextCommodities;
-			optimisticCrypto = nextCrypto;
-			const cryptoPromise = fetchCryptoPrices(cryptoCoins);
-			const indicesPromise = fetchIndices(indicesConfig);
-			const sectorsPromise = fetchSectorPerformance();
-			const commoditiesPromise = fetchCommodities(commodityConfigs);
-
-			const [indicesData, sectorsData, commoditiesData] = await Promise.all([
-				indicesPromise,
-				sectorsPromise,
-				commoditiesPromise
-			]);
-
-			if (seq !== marketsLoadSeq) {
-				return;
-			}
-
-			missingCommodities = commodityConfigs
-				.filter((c) => !commoditiesData.some((i) => i.symbol === c.symbol))
-				.map((c) => c.symbol)
-				.slice(0, 5);
-			missingIndices = indicesConfig
-				.filter((c) => !indicesData.some((i) => i.symbol === c.symbol))
-				.map((c) => c.symbol)
-				.slice(0, 5);
-
-			const mergedIndices = indicesConfig.map((sel) => {
-				return (
-					indicesData.find((i) => i.symbol === sel.symbol) ??
-					optimisticIndices.find((i) => i.symbol === sel.symbol)
-				);
-			});
-			const mergedCommodities = commodityConfigs.map((sel) => {
-				return (
-					commoditiesData.find((i) => i.symbol === sel.symbol) ??
-					optimisticCommodities.find((i) => i.symbol === sel.symbol)
-				);
-			});
-			markets.setIndices(mergedIndices);
-			markets.setSectors(sectorsData);
-			markets.setCommodities(mergedCommodities);
-
-			const cryptoData = await cryptoPromise;
-			if (seq !== marketsLoadSeq) {
-				return;
-			}
-			missingCrypto = cryptoCoins
-				.filter((c) => !cryptoData.some((i) => i.id === c.id))
-				.map((c) => c.id)
-				.slice(0, 5);
-			const mergedCrypto = cryptoCoins.map((sel) => {
-				return (
-					cryptoData.find((i) => i.id === sel.id) ??
-					optimisticCrypto.find((i) => i.id === sel.id)
-				);
-			});
-			markets.setCrypto(mergedCrypto);
-
-			data = {
-				crypto: mergedCrypto,
-				indices: mergedIndices,
-				sectors: sectorsData,
-				commodities: mergedCommodities
-			};
+			const data = await fetchAllMarkets(cryptoCoins, commodityConfigs, indicesConfig);
+			markets.setIndices(data.indices);
+			markets.setSectors(data.sectors);
+			markets.setCommodities(data.commodities);
+			markets.setCrypto(data.crypto);
 		} catch (error) {
 			console.error('Failed to load markets:', error);
-		} finally {
-			void loadMarketsStart;
 		}
 	}
 
@@ -302,11 +180,6 @@
 		await blockbeats.load($settings.locale, silent);
 	}
 
-	async function loadClsTelegraph(silent = false) {
-		if (!isPanelVisible('cls')) return;
-		await clsTelegraph.load(silent);
-	}
-
 	/** @param silent - true = no global loading bar, no per-panel loading (used for auto-refresh) */
 	async function handleRefresh(silent = false) {
 		if (!silent) refresh.startRefresh();
@@ -316,7 +189,6 @@
 				loadMarkets(),
 				loadMiscData(silent),
 				loadBlockBeats(silent),
-				loadClsTelegraph(silent),
 				loadFedData()
 			]);
 			if (silent) refresh.updateLastRefresh();
@@ -455,73 +327,6 @@
 	}
 
 	let longPressTimer = $state<ReturnType<typeof setTimeout> | null>(null);
-	let marketsLoadSeq = 0;
-	let cryptoRefreshInFlight = false;
-	let cryptoRefreshRequested = false;
-	let lastFetchedCryptoIds: string[] = [];
-
-	async function refreshCryptoOnly() {
-		cryptoRefreshRequested = true;
-		const cryptoCoinsNow = cryptoList.getSelectedConfig();
-		const currentCryptoNow = get(crypto).items;
-		const nextCryptoNow = cryptoCoinsNow.map((sel) => {
-			return (
-				currentCryptoNow.find((i) => i.id === sel.id) ?? {
-					id: sel.id,
-					symbol: sel.symbol,
-					name: sel.name,
-					current_price: 0,
-					price_change_24h: 0,
-					price_change_percentage_24h: 0
-				}
-			);
-		});
-		markets.setCrypto(nextCryptoNow);
-		if (cryptoRefreshInFlight) return;
-		cryptoRefreshInFlight = true;
-
-		while (cryptoRefreshRequested) {
-			cryptoRefreshRequested = false;
-			const cryptoCoins = cryptoList.getSelectedConfig();
-			const currentIds = cryptoCoins.map((c) => c.id);
-			const addedIds = currentIds.filter((id) => !lastFetchedCryptoIds.includes(id));
-			lastFetchedCryptoIds = currentIds;
-
-			const t0 = Date.now();
-
-			if (addedIds.length === 0) {
-				void t0;
-				continue;
-			}
-
-			const addedCoins = cryptoCoins.filter((c) => addedIds.includes(c.id));
-			const cryptoData = await fetchCryptoPrices(addedCoins);
-			const latestCoins = cryptoList.getSelectedConfig();
-			const latestItems = get(crypto).items;
-			const mergedCrypto = latestCoins.map((sel) => {
-				return (
-					cryptoData.find((i) => i.id === sel.id) ??
-					latestItems.find((i) => i.id === sel.id) ?? {
-						id: sel.id,
-						symbol: sel.symbol,
-						name: sel.name,
-						current_price: 0,
-						price_change_24h: 0,
-						price_change_percentage_24h: 0
-					}
-				);
-			});
-			markets.setCrypto(mergedCrypto);
-
-			void t0;
-		}
-
-		cryptoRefreshInFlight = false;
-	}
-
-	function handleCryptoListChange() {
-		refreshCryptoOnly();
-	}
 
 	function handleSlotPointerDown(panelId: PanelId, e: PointerEvent) {
 		if (NON_DRAGGABLE_PANELS.includes(panelId)) return;
@@ -700,10 +505,6 @@
 							onRetry={loadNews}
 						/>
 					</div>
-				{:else if panelId === 'cls'}
-					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
-						<ClsPanel />
-					</div>
 				{:else if panelId === 'markets'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
 						<MarketsPanel onRetry={loadMarkets} onIndicesListChange={loadMarkets} />
@@ -718,7 +519,7 @@
 					</div>
 				{:else if panelId === 'crypto'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
-						<CryptoPanel onCryptoListChange={handleCryptoListChange} />
+						<CryptoPanel onCryptoListChange={loadMarkets} />
 					</div>
 				{:else if panelId === 'mainchar'}
 					<div class="panel-slot" class:dragging={draggingPanelId === panelId}>
@@ -896,27 +697,6 @@
 		flex: 1;
 		padding: 1rem;
 		overflow-y: auto;
-		/* Hide scrollbar by default, show on hover */
-		scrollbar-width: thin;
-		scrollbar-color: transparent transparent;
-	}
-
-	.main-content:hover {
-		scrollbar-color: var(--border) transparent;
-	}
-
-	:global(.main-content::-webkit-scrollbar) {
-		width: 8px;
-		background: transparent;
-	}
-
-	:global(.main-content::-webkit-scrollbar-thumb) {
-		background: transparent;
-		border-radius: 4px;
-	}
-
-	:global(.main-content:hover::-webkit-scrollbar-thumb) {
-		background: rgba(148, 163, 184, 0.7);
 	}
 
 	.map-row {

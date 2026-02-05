@@ -75,7 +75,7 @@
 		{#if hasMore}
 			<button type="button" class="show-more-btn" onclick={() => (expanded = !expanded)}>
 				{expanded ? t.showLess : t.showMore}
-				{#if !expanded}<span class="show-more-count">(+{moreCount})</span>{/if}
+				{#if !expanded}<span class="show-more-count">({moreCount})</span>{/if}
 			</button>
 		{/if}
 	{/if}

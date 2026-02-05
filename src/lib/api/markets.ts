@@ -5,7 +5,6 @@
  * Free tier: 60 calls/minute
  */
 
-import { base } from '$app/paths';
 import {
 	INDICES,
 	SECTORS,
@@ -17,8 +16,6 @@ import {
 } from '$lib/config/markets';
 import type { MarketItem, SectorPerformance, CryptoItem } from '$lib/types';
 import { fetchWithProxy, logger, FINNHUB_API_KEY, FINNHUB_BASE_URL } from '$lib/config/api';
-
-const apiBase = base || '';
 
 interface CoinGeckoPrice {
 	usd: number;
@@ -176,21 +173,17 @@ async function fetchEastmoneyQuote(symbol: string): Promise<EastmoneyQuote | nul
 	}
 }
 
-/** CoinGecko: prefer server proxy (cached), fallback to direct URL for static deploy or when proxy fails */
-const COINGECKO_PROXY = `${apiBase}/api/coingecko/simple-price`;
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 
-let lastCryptoSuccess: CryptoItem[] | null = null;
-
 /**
- * Fetch crypto prices. Tries server proxy first; on failure falls back to fetchWithProxy(CoinGecko).
+ * Fetch crypto prices from CoinGecko.
+ * Tries direct fetch first (CoinGecko allows CORS); falls back to proxy if needed.
  * @param coins - List of { id, symbol, name } (CoinGecko id). If not provided, uses CRYPTO from config.
  */
 export async function fetchCryptoPrices(coins?: CryptoOption[]): Promise<CryptoItem[]> {
 	const list = coins && coins.length > 0 ? coins : CRYPTO;
 	const ids = list.map((c) => c.id).join(',');
-	const proxyUrl = `${COINGECKO_PROXY}?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true`;
-	const directUrl = `${COINGECKO_BASE}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+	const coinGeckoUrl = `${COINGECKO_BASE}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
 
 	function mapResponse(data: CoinGeckoPricesResponse): CryptoItem[] {
 		return list.map((crypto) => {
@@ -208,78 +201,37 @@ export async function fetchCryptoPrices(coins?: CryptoOption[]): Promise<CryptoI
 		});
 	}
 
-	function parseAndMap(res: Response): Promise<CryptoItem[] | null> {
-		return res.json().then((data: CoinGeckoPricesResponse) => {
-			if (data && typeof data === 'object' && !('error' in data) && Object.keys(data).length > 0) {
+	// 1. Try direct fetch (CoinGecko allows CORS for simple/price)
+	try {
+		logger.log('Markets API', 'Fetching crypto from CoinGecko (direct)');
+		const direct = await fetch(coinGeckoUrl);
+		if (direct.ok) {
+			const data = (await direct.json()) as CoinGeckoPricesResponse;
+			if (
+				data &&
+				typeof data === 'object' &&
+				(data.bitcoin || data.ethereum || Object.keys(data).length > 0)
+			) {
 				return mapResponse(data);
 			}
-			return null;
-		});
-	}
-
-	// 1. Try server proxy (works in dev / Node deploy; reduces 429)
-	try {
-		const response = await fetch(proxyUrl);
-		let parsedMapped1: CryptoItem[] | null = null;
-		if (response.ok) parsedMapped1 = await parseAndMap(response);
-		if (response.ok && parsedMapped1) {
-			lastCryptoSuccess = parsedMapped1;
-			return parsedMapped1;
 		}
-	} catch (_) {
-		// Proxy unavailable (e.g. static build): fall through to direct
+	} catch (e) {
+		logger.warn('Markets API', 'CoinGecko direct fetch failed, trying proxy:', e);
 	}
 
-	// 2. Fallback: CORS proxy to CoinGecko
+	// 2. Fallback: proxy
 	try {
-		const response = await fetchWithProxy(directUrl);
-		let parsedMapped2: CryptoItem[] | null = null;
-		if (response.ok) parsedMapped2 = await parseAndMap(response);
-		if (response.ok && parsedMapped2) {
-			lastCryptoSuccess = parsedMapped2;
-			return parsedMapped2;
+		logger.log('Markets API', 'Fetching crypto from CoinGecko (proxy)');
+		const response = await fetchWithProxy(coinGeckoUrl);
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+		const data = (await response.json()) as CoinGeckoPricesResponse;
+		if (data && typeof data === 'object') {
+			return mapResponse(data);
 		}
 	} catch (error) {
-		logger.error('Markets API', 'CoinGecko fetch failed:', error);
-	}
-
-	// 3. Fallback: CoinMarketCap via server proxy (when API key configured on server)
-	try {
-		const symbols = list.map((c) => c.symbol).join(',');
-		const cmcProxyUrl = `${apiBase}/api/coinmarketcap/quotes?symbol=${encodeURIComponent(symbols)}`;
-		const response = await fetch(cmcProxyUrl);
-		if (response.ok) {
-			const json = await response.json();
-			const data = json?.data as Record<string, { symbol?: string; quote?: { USD?: { price?: number; percent_change_24h?: number } } }> | undefined;
-			if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-				// CMC may key by symbol ("BTC") or by id ("1", "1027"); find by symbol
-				const bySymbol = (sym: string) =>
-					data[sym] ?? Object.values(data).find((v) => v?.symbol === sym);
-				const items: CryptoItem[] = list.map((crypto) => {
-					const raw = bySymbol(crypto.symbol);
-					const usd = raw?.quote?.USD;
-					const price = typeof usd?.price === 'number' ? usd.price : 0;
-					const change =
-						typeof usd?.percent_change_24h === 'number' ? usd.percent_change_24h : 0;
-					return {
-						id: crypto.id,
-						symbol: crypto.symbol,
-						name: crypto.name,
-						current_price: price,
-						price_change_24h: change,
-						price_change_percentage_24h: change
-					};
-				});
-				lastCryptoSuccess = items;
-				return items;
-			}
-		}
-	} catch (error) {
-		logger.warn('Markets API', 'CoinMarketCap fallback failed:', error);
-	}
-
-	if (lastCryptoSuccess && lastCryptoSuccess.length > 0) {
-		return lastCryptoSuccess;
+		logger.error('Markets API', 'Error fetching crypto:', error);
 	}
 
 	return list.map((c) => ({

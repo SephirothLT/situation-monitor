@@ -25,9 +25,8 @@
 	}
 
 	.dashboard-grid {
-		width: 100%;
-		max-width: none;
-		margin: 0;
+		max-width: 2000px;
+		margin: 0 auto;
 	}
 
 	/* Masonry: columns filled top-to-bottom, each column independent (compact, no cross-column reflow on collapse) */

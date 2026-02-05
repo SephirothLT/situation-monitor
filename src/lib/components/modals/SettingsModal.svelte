@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
-	import { settings, refresh } from '$lib/stores';
+	import { settings } from '$lib/stores';
 	import { PANELS, UI_TEXTS, getPanelName, type PanelId, type Locale } from '$lib/config';
 
 	interface Props {
@@ -9,20 +9,9 @@
 		onReconfigure?: () => void;
 	}
 
-let { open = false, onClose, onReconfigure }: Props = $props();
+	let { open = false, onClose, onReconfigure }: Props = $props();
 
-const t = $derived(UI_TEXTS[$settings.locale]);
-
-const refreshOptions = [
-		{ value: 5 * 60 * 1000, zh: '高频 · 每 5 分钟', en: 'High · every 5 min' },
-		{ value: 15 * 60 * 1000, zh: '标准 · 每 15 分钟', en: 'Standard · every 15 min' },
-		{ value: 30 * 60 * 1000, zh: '低频 · 每 30 分钟', en: 'Low · every 30 min' },
-		{ value: 60 * 60 * 1000, zh: '节省流量 · 每 60 分钟', en: 'Lite · every 60 min' }
-	] as const;
-
-const autoInterval = $derived($refresh.autoRefreshInterval);
-const isCustomInterval = $derived(!refreshOptions.some((opt) => opt.value === autoInterval));
-let customMinutes = $state('' + Math.round($refresh.autoRefreshInterval / 60000));
+	const t = $derived(UI_TEXTS[$settings.locale]);
 
 	function handleTogglePanel(panelId: PanelId) {
 		settings.togglePanel(panelId);
@@ -38,11 +27,6 @@ let customMinutes = $state('' + Math.round($refresh.autoRefreshInterval / 60000)
 
 	function setTheme(theme: 'dark' | 'light') {
 		settings.setTheme(theme);
-	}
-
-	function setAutoInterval(intervalMs: number) {
-		refresh.setAutoRefreshInterval(intervalMs);
-		customMinutes = String(Math.round(intervalMs / 60000));
 	}
 </script>
 
@@ -84,51 +68,6 @@ let customMinutes = $state('' + Math.round($refresh.autoRefreshInterval / 60000)
 					onclick={() => setTheme('light')}
 				>
 					{t.settings.themeLight}
-				</button>
-			</div>
-		</section>
-
-		<section class="settings-section">
-			<h3 class="section-title">{t.settings.refreshInterval}</h3>
-			<div class="refresh-buttons">
-				{#each refreshOptions as opt}
-					<button
-						class="refresh-btn"
-						class:active={!isCustomInterval && autoInterval === opt.value}
-						onclick={() => setAutoInterval(opt.value)}
-					>
-						{$settings.locale === 'zh' ? opt.zh : opt.en}
-					</button>
-				{/each}
-			</div>
-			<div class="refresh-custom">
-				<label class="refresh-custom-label">
-					<span>
-						{$settings.locale === 'zh' ? '自定义：' : 'Custom:'}
-					</span>
-					<input
-						type="number"
-						min="1"
-						max="720"
-						class="refresh-input"
-						bind:value={customMinutes}
-					/>
-					<span class="refresh-unit">
-						{$settings.locale === 'zh' ? '分钟' : 'min'}
-					</span>
-				</label>
-				<button
-					type="button"
-					class="refresh-apply-btn"
-					class:active={isCustomInterval}
-					onclick={() => {
-						const minutes = Number(customMinutes);
-						if (!Number.isFinite(minutes) || minutes <= 0) return;
-						const clamped = Math.max(1, Math.min(720, Math.round(minutes)));
-						setAutoInterval(clamped * 60 * 1000);
-					}}
-				>
-					{$settings.locale === 'zh' ? '应用' : 'Apply'}
 				</button>
 			</div>
 		</section>
@@ -246,86 +185,6 @@ let customMinutes = $state('' + Math.round($refresh.autoRefreshInterval / 60000)
 		font-size: 0.65rem;
 		color: var(--text-muted);
 		margin: 0;
-	}
-
-	.refresh-buttons {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-	}
-
-	.refresh-btn {
-		padding: 0.35rem 0.75rem;
-		background: rgba(255, 255, 255, 0.02);
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		color: var(--text-secondary);
-		font-size: 0.6rem;
-		cursor: pointer;
-		transition: all 0.15s ease;
-		white-space: nowrap;
-	}
-
-	.refresh-btn:hover {
-		background: rgba(255, 255, 255, 0.06);
-		color: var(--text-primary);
-	}
-
-	.refresh-btn.active {
-		border-color: var(--accent);
-		background: rgba(var(--accent-rgb), 0.15);
-		color: var(--accent);
-	}
-
-	.refresh-custom {
-		margin-top: 0.5rem;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.refresh-custom-label {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		font-size: 0.6rem;
-		color: var(--text-secondary);
-	}
-
-	.refresh-input {
-		width: 4rem;
-		padding: 0.25rem 0.4rem;
-		font-size: 0.6rem;
-		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.02);
-		border: 1px solid var(--border);
-		border-radius: 4px;
-	}
-
-	.refresh-input:focus {
-		outline: none;
-		border-color: var(--accent);
-	}
-
-	.refresh-unit {
-		font-size: 0.6rem;
-		color: var(--text-muted);
-	}
-
-	.refresh-apply-btn {
-		padding: 0.3rem 0.75rem;
-		font-size: 0.6rem;
-		border-radius: 999px;
-		border: 1px solid var(--accent);
-		background: rgba(var(--accent-rgb), 0.1);
-		color: var(--accent);
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.refresh-apply-btn:hover {
-		background: rgba(var(--accent-rgb), 0.18);
 	}
 
 	.panels-grid {
