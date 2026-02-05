@@ -44,7 +44,8 @@
 		fedIndicators,
 		fedNews,
 		indices,
-		crypto
+		crypto,
+		commodities
 	} from '$lib/stores';
 	import {
 		buildAIContext,
@@ -107,17 +108,201 @@
 	}
 
 	async function loadMarkets() {
+		// #region agent log
+		const loadMarketsStart = Date.now();
+		const seq = ++marketsLoadSeq;
+		fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: '+page.svelte:loadMarkets',
+				message: 'start',
+				data: {
+					seq,
+					cryptoCount: cryptoList.getSelectedConfig().length,
+					indicesCount: indicesList.getSelectedConfig().length,
+					commoditiesCount: commodityList.getSelectedConfig().length
+				},
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				hypothesisId: 'B'
+			})
+		}).catch(() => {});
+		// #endregion
+		let data:
+			| Awaited<ReturnType<typeof fetchAllMarkets>>
+			| null = null;
+		let missingCrypto: string[] = [];
+		let missingCommodities: string[] = [];
+		let missingIndices: string[] = [];
+		let optimisticCrypto: typeof data extends null ? [] : typeof data['crypto'] = [];
+		let optimisticCommodities: typeof data extends null ? [] : typeof data['commodities'] = [];
+		let optimisticIndices: typeof data extends null ? [] : typeof data['indices'] = [];
 		try {
 			const cryptoCoins = cryptoList.getSelectedConfig();
 			const commodityConfigs = commodityList.getSelectedConfig();
 			const indicesConfig = indicesList.getSelectedConfig();
-			const data = await fetchAllMarkets(cryptoCoins, commodityConfigs, indicesConfig);
-			markets.setIndices(data.indices);
+			// Optimistic sync: update UI immediately with selected lists
+			const currentIndices = get(indices).items;
+			const currentCommodities = get(commodities).items;
+			const currentCrypto = get(crypto).items;
+			const nextIndices = indicesConfig.map((sel) => {
+				return (
+					currentIndices.find((i) => i.symbol === sel.symbol) ?? {
+						symbol: sel.symbol,
+						name: sel.name,
+						price: NaN,
+						change: NaN,
+						changePercent: NaN,
+						type: 'index' as const
+					}
+				);
+			});
+			const nextCommodities = commodityConfigs.map((sel) => {
+				return (
+					currentCommodities.find((i) => i.symbol === sel.symbol) ?? {
+						symbol: sel.symbol,
+						name: sel.name,
+						price: NaN,
+						change: NaN,
+						changePercent: NaN,
+						type: 'commodity' as const
+					}
+				);
+			});
+			const nextCrypto = cryptoCoins.map((sel) => {
+				return (
+					currentCrypto.find((i) => i.id === sel.id) ?? {
+						id: sel.id,
+						symbol: sel.symbol,
+						name: sel.name,
+						current_price: 0,
+						price_change_24h: 0,
+						price_change_percentage_24h: 0
+					}
+				);
+			});
+			markets.setIndices(nextIndices);
+			markets.setCommodities(nextCommodities);
+			markets.setCrypto(nextCrypto);
+			optimisticIndices = nextIndices;
+			optimisticCommodities = nextCommodities;
+			optimisticCrypto = nextCrypto;
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: '+page.svelte:loadMarkets',
+					message: 'optimistic sync',
+					data: {
+						nextIndices: nextIndices.length,
+						nextCommodities: nextCommodities.length,
+						nextCrypto: nextCrypto.length
+					},
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					hypothesisId: 'C'
+				})
+			}).catch(() => {});
+			// #endregion
+			data = await fetchAllMarkets(cryptoCoins, commodityConfigs, indicesConfig);
+			missingCrypto = cryptoCoins
+				.filter((c) => !data?.crypto.some((i) => i.id === c.id))
+				.map((c) => c.id)
+				.slice(0, 5);
+			missingCommodities = commodityConfigs
+				.filter((c) => !data?.commodities.some((i) => i.symbol === c.symbol))
+				.map((c) => c.symbol)
+				.slice(0, 5);
+			missingIndices = indicesConfig
+				.filter((c) => !data?.indices.some((i) => i.symbol === c.symbol))
+				.map((c) => c.symbol)
+				.slice(0, 5);
+			const mergedIndices = indicesConfig.map((sel) => {
+				return (
+					data?.indices.find((i) => i.symbol === sel.symbol) ??
+					optimisticIndices.find((i) => i.symbol === sel.symbol)
+				);
+			});
+			const mergedCommodities = commodityConfigs.map((sel) => {
+				return (
+					data?.commodities.find((i) => i.symbol === sel.symbol) ??
+					optimisticCommodities.find((i) => i.symbol === sel.symbol)
+				);
+			});
+			const mergedCrypto = cryptoCoins.map((sel) => {
+				return (
+					data?.crypto.find((i) => i.id === sel.id) ??
+					optimisticCrypto.find((i) => i.id === sel.id)
+				);
+			});
+			if (seq !== marketsLoadSeq) {
+				// #region agent log
+				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: '+page.svelte:loadMarkets',
+						message: 'stale result dropped',
+						data: { seq, current: marketsLoadSeq },
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						hypothesisId: 'D'
+					})
+				}).catch(() => {});
+				// #endregion
+				return;
+			}
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: '+page.svelte:loadMarkets',
+					message: 'merge result',
+					data: {
+						seq,
+						mergedCryptoLen: mergedCrypto.length,
+						mergedCommoditiesLen: mergedCommodities.length,
+						mergedIndicesLen: mergedIndices.length
+					},
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					hypothesisId: 'C'
+				})
+			}).catch(() => {});
+			// #endregion
+
+			markets.setIndices(mergedIndices);
 			markets.setSectors(data.sectors);
-			markets.setCommodities(data.commodities);
-			markets.setCrypto(data.crypto);
+			markets.setCommodities(mergedCommodities);
+			markets.setCrypto(mergedCrypto);
 		} catch (error) {
 			console.error('Failed to load markets:', error);
+		} finally {
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: '+page.svelte:loadMarkets',
+					message: 'end',
+					data: {
+						durationMs: Date.now() - loadMarketsStart,
+						cryptoLen: data?.crypto?.length ?? null,
+						commoditiesLen: data?.commodities?.length ?? null,
+						indicesLen: data?.indices?.length ?? null,
+						missingCrypto,
+						missingCommodities,
+						missingIndices
+					},
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					hypothesisId: 'B'
+				})
+			}).catch(() => {});
+			// #endregion
 		}
 	}
 
@@ -335,6 +520,7 @@
 	}
 
 	let longPressTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+	let marketsLoadSeq = 0;
 
 	function handleSlotPointerDown(panelId: PanelId, e: PointerEvent) {
 		if (NON_DRAGGABLE_PANELS.includes(panelId)) return;
@@ -709,6 +895,27 @@
 		flex: 1;
 		padding: 1rem;
 		overflow-y: auto;
+		/* Hide scrollbar by default, show on hover */
+		scrollbar-width: thin;
+		scrollbar-color: transparent transparent;
+	}
+
+	.main-content:hover {
+		scrollbar-color: var(--border) transparent;
+	}
+
+	:global(.main-content::-webkit-scrollbar) {
+		width: 8px;
+		background: transparent;
+	}
+
+	:global(.main-content::-webkit-scrollbar-thumb) {
+		background: transparent;
+		border-radius: 4px;
+	}
+
+	:global(.main-content:hover::-webkit-scrollbar-thumb) {
+		background: rgba(148, 163, 184, 0.7);
 	}
 
 	.map-row {

@@ -348,12 +348,33 @@
 		overflow-x: hidden;
 		overflow-y: auto;
 		transition: max-height 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+		/* Hide scrollbar by default, show subtle thumb on hover/scroll */
+		scrollbar-width: thin;
+		scrollbar-color: transparent transparent;
 	}
 
 	.panel-content.collapsed {
 		max-height: 0;
 		overflow: hidden;
 		transition: max-height 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
+	.panel-content:hover {
+		scrollbar-color: var(--border) transparent;
+	}
+
+	:global(.panel-content::-webkit-scrollbar) {
+		width: 6px;
+		background: transparent;
+	}
+
+	:global(.panel-content::-webkit-scrollbar-thumb) {
+		background: transparent;
+		border-radius: 3px;
+	}
+
+	:global(.panel-content:hover::-webkit-scrollbar-thumb) {
+		background: rgba(148, 163, 184, 0.6);
 	}
 
 	.panel-content-inner {

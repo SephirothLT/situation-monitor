@@ -3,6 +3,7 @@
  * Note: Some of these use mock data as the original APIs require authentication
  */
 
+import { base } from '$app/paths';
 import {
 	ETHERSCAN_API_BASE,
 	ETHERSCAN_API_KEY,
@@ -10,6 +11,8 @@ import {
 	INTELLIZENCE_API_KEY,
 	INTELLIZENCE_LAYOFF_URL
 } from '$lib/config/api';
+
+const apiBase = base || '';
 
 export interface Prediction {
 	id: string;
@@ -70,7 +73,9 @@ const WHALE_TX_PER_ADDRESS = 5;
 const WEI_PER_ETH = 1e18;
 const LAMPORTS_PER_SOL = 1e9;
 
-const COINGECKO_PRICE_URL =
+/** CoinGecko: prefer server proxy; fallback URL for static deploy or when proxy fails */
+const COINGECKO_PRICE_PROXY = `${apiBase}/api/coingecko/simple-price?ids=ethereum,bitcoin,solana&vs_currencies=usd`;
+const COINGECKO_PRICE_DIRECT =
 	'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,solana&vs_currencies=usd';
 
 function isEthAddress(addr: string): boolean {
@@ -87,29 +92,67 @@ function isSolAddress(addr: string): boolean {
 }
 
 async function getPricesUsd(): Promise<{ eth: number; btc: number; sol: number }> {
-	try {
-		let res = await fetch(COINGECKO_PRICE_URL, { cache: 'no-store' });
-		if (!res.ok) {
-			try {
-				res = await fetchWithProxy(COINGECKO_PRICE_URL);
-			} catch {
-				return { eth: 3000, btc: 100000, sol: 150 };
-			}
-		}
-		if (!res.ok) return { eth: 3000, btc: 100000, sol: 150 };
-		const data = (await res.json()) as {
+	const fallback = { eth: 3000, btc: 100000, sol: 150 };
+	function parse(data: unknown): { eth: number; btc: number; sol: number } {
+		const o = data as {
 			ethereum?: { usd?: number };
 			bitcoin?: { usd?: number };
 			solana?: { usd?: number };
+			error?: string;
 		};
+		if (o?.error) return fallback;
 		return {
-			eth: data?.ethereum?.usd && data.ethereum.usd > 0 ? data.ethereum.usd : 3000,
-			btc: data?.bitcoin?.usd && data.bitcoin.usd > 0 ? data.bitcoin.usd : 100000,
-			sol: data?.solana?.usd && data.solana.usd > 0 ? data.solana.usd : 150
+			eth: o?.ethereum?.usd && o.ethereum.usd > 0 ? o.ethereum.usd : 3000,
+			btc: o?.bitcoin?.usd && o.bitcoin.usd > 0 ? o.bitcoin.usd : 100000,
+			sol: o?.solana?.usd && o.solana.usd > 0 ? o.solana.usd : 150
 		};
-	} catch {
-		return { eth: 3000, btc: 100000, sol: 150 };
 	}
+	try {
+		let res = await fetch(COINGECKO_PRICE_PROXY);
+		if (res.ok) {
+			const data = await res.json();
+			return parse(data);
+		}
+	} catch {
+		// Proxy unavailable (e.g. static build)
+	}
+	try {
+		const res = await fetchWithProxy(COINGECKO_PRICE_DIRECT);
+		if (res.ok) {
+			const data = await res.json();
+			return parse(data);
+		}
+	} catch {
+		// ignore
+	}
+	// CoinMarketCap fallback via server proxy
+	try {
+		const res = await fetch(
+			`${apiBase}/api/coinmarketcap/quotes?symbol=${encodeURIComponent('BTC,ETH,SOL')}`
+		);
+		if (res.ok) {
+			const json = (await res.json()) as {
+				data?: Record<string, { symbol?: string; quote?: { USD?: { price?: number } } }>;
+			};
+			const d = json?.data;
+			if (d && typeof d === 'object') {
+				const get = (sym: string) =>
+					d[sym]?.quote?.USD?.price ??
+					Object.values(d).find((v) => v?.symbol === sym)?.quote?.USD?.price;
+				const eth = get('ETH');
+				const btc = get('BTC');
+				const sol = get('SOL');
+				return {
+					eth: typeof eth === 'number' && eth > 0 ? eth : fallback.eth,
+					btc: typeof btc === 'number' && btc > 0 ? btc : fallback.btc,
+					sol: typeof sol === 'number' && sol > 0 ? sol : fallback.sol
+				};
+			}
+		}
+	} catch {
+		// ignore
+	}
+	return fallback;
 }
 
 /** Etherscan txlist result item */

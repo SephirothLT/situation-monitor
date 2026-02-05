@@ -155,6 +155,7 @@ export const UI_TEXTS: Record<
 			dashboard: string;
 			language: string;
 			background: string;
+			refreshInterval: string;
 			themeDark: string;
 			themeLight: string;
 			enabledPanels: string;
@@ -402,6 +403,7 @@ export const UI_TEXTS: Record<
 			dashboard: '仪表盘',
 			language: '语言',
 			background: '背景颜色',
+			refreshInterval: '自动刷新间隔',
 			themeDark: '深色',
 			themeLight: '白色',
 			enabledPanels: '启用面板',
@@ -729,6 +731,7 @@ export const UI_TEXTS: Record<
 			dashboard: 'Dashboard',
 			language: 'Language',
 			background: 'Background',
+			refreshInterval: 'Auto refresh interval',
 			themeDark: 'Dark',
 			themeLight: 'Light',
 			enabledPanels: 'Enabled Panels',

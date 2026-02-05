@@ -152,15 +152,22 @@ function createMarketsStore() {
 		 * Set crypto data
 		 */
 		setCrypto(items: CryptoItem[]) {
-			update((state) => ({
-				...state,
-				crypto: {
-					items,
-					loading: false,
-					error: null,
-					lastUpdated: Date.now()
-				}
-			}));
+			update((state) => {
+				const hasRealPrice = items.some((item) => item.current_price > 0);
+				const existingHasPrice = state.crypto.items.some((item) => item.current_price > 0);
+				const shouldKeepExisting = !hasRealPrice && existingHasPrice;
+				const nextItems = shouldKeepExisting ? state.crypto.items : items;
+
+				return {
+					...state,
+					crypto: {
+						items: nextItems,
+						loading: false,
+						error: hasRealPrice ? null : state.crypto.error,
+						lastUpdated: hasRealPrice ? Date.now() : state.crypto.lastUpdated
+					}
+				};
+			});
 		},
 
 		/**

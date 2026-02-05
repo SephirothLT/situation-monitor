@@ -83,6 +83,16 @@ export const TWELVE_DATA_API_KEY = browser
 export const TWELVE_DATA_BASE_URL = 'https://api.twelvedata.com';
 
 /**
+ * CoinMarketCap API key (optional) – fallback for crypto prices when CoinGecko fails/429
+ * Get key at: https://coinmarketcap.com/api/ (Basic plan, quotes/latest)
+ */
+export const COINMARKETCAP_API_KEY = browser
+	? (import.meta.env?.VITE_COINMARKETCAP_API_KEY ?? '')
+	: (process.env.VITE_COINMARKETCAP_API_KEY ?? '');
+
+export const COINMARKETCAP_BASE_URL = 'https://pro-api.coinmarketcap.com/v1';
+
+/**
  * Check if we're in development mode
  * Uses import.meta.env which is available in both browser and test environments
  */

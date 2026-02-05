@@ -144,9 +144,10 @@ function createRefreshStore() {
 
 	let autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
 	let refreshStartTime: number | null = null;
+	let lastAutoRefreshCallback: (() => void) | null = null;
 
-	// Setup auto-refresh timer
-	function setupAutoRefresh(callback: () => void) {
+	// Setup auto-refresh timer (keeps track of last callback so interval changes still work)
+	function setupAutoRefreshInternal(callback?: () => void) {
 		const state = get({ subscribe });
 
 		if (autoRefreshTimer) {
@@ -154,8 +155,12 @@ function createRefreshStore() {
 			autoRefreshTimer = null;
 		}
 
-		if (state.autoRefreshEnabled && browser) {
-			autoRefreshTimer = setInterval(callback, state.autoRefreshInterval);
+		if (callback) {
+			lastAutoRefreshCallback = callback;
+		}
+
+		if (state.autoRefreshEnabled && browser && lastAutoRefreshCallback) {
+			autoRefreshTimer = setInterval(lastAutoRefreshCallback, state.autoRefreshInterval);
 		}
 	}
 
@@ -301,7 +306,9 @@ function createRefreshStore() {
 				saveSettings(newEnabled, state.autoRefreshInterval);
 
 				if (callback) {
-					setupAutoRefresh(callback);
+					setupAutoRefreshInternal(callback);
+				} else {
+					setupAutoRefreshInternal();
 				}
 
 				return {
@@ -319,7 +326,9 @@ function createRefreshStore() {
 				saveSettings(state.autoRefreshEnabled, intervalMs);
 
 				if (callback) {
-					setupAutoRefresh(callback);
+					setupAutoRefreshInternal(callback);
+				} else {
+					setupAutoRefreshInternal();
 				}
 
 				return {
@@ -333,7 +342,7 @@ function createRefreshStore() {
 		 * Setup auto-refresh with callback
 		 */
 		setupAutoRefresh(callback: () => void) {
-			setupAutoRefresh(callback);
+			setupAutoRefreshInternal(callback);
 		},
 
 		/**

@@ -92,6 +92,20 @@ function createCryptoListStore() {
 			if (!id) return false;
 			let added = false;
 			update((list) => {
+				// #region agent log
+				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'stores/cryptoList.ts:addCrypto',
+						message: 'addCrypto update',
+						data: { id, symbol, listLen: list.length },
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						hypothesisId: 'A'
+					})
+				}).catch(() => {});
+				// #endregion
 				if (list.some((i) => i.id.toLowerCase() === id.toLowerCase())) return list;
 				if (list.length >= MAX_CRYPTO) return list;
 				added = true;
@@ -111,6 +125,20 @@ function createCryptoListStore() {
 
 		removeCrypto(id: string): void {
 			update((list) => {
+				// #region agent log
+				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'stores/cryptoList.ts:removeCrypto',
+						message: 'removeCrypto update',
+						data: { id, listLen: list.length },
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						hypothesisId: 'A'
+					})
+				}).catch(() => {});
+				// #endregion
 				const next = list.filter((i) => i.id !== id);
 				if (next.length === 0) {
 					save(defaultList);
