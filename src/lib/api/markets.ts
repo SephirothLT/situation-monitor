@@ -484,12 +484,64 @@ export async function fetchAllMarkets(
 	commodityConfigs?: CommodityConfig[],
 	indicesConfig?: IndexConfig[]
 ): Promise<AllMarketsData> {
+	// #region agent log
+	const start = Date.now();
+	fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			location: 'markets.ts:fetchAllMarkets',
+			message: 'start',
+			data: {
+				cryptoCount: cryptoCoins?.length ?? null,
+				commodityCount: commodityConfigs?.length ?? null,
+				indicesCount: indicesConfig?.length ?? null
+			},
+			timestamp: Date.now(),
+			sessionId: 'debug-session',
+			hypothesisId: 'A'
+		})
+	}).catch(() => {});
+	// #endregion
+	const timed = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
+		const t0 = Date.now();
+		const result = await fn();
+		// #region agent log
+		fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'markets.ts:fetchAllMarkets',
+				message: 'source done',
+				data: { label, durationMs: Date.now() - t0 },
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				hypothesisId: 'B'
+			})
+		}).catch(() => {});
+		// #endregion
+		return result;
+	};
 	const [crypto, indices, sectors, commodities] = await Promise.all([
-		fetchCryptoPrices(cryptoCoins),
-		fetchIndices(indicesConfig),
-		fetchSectorPerformance(),
-		fetchCommodities(commodityConfigs)
+		timed('crypto', () => fetchCryptoPrices(cryptoCoins)),
+		timed('indices', () => fetchIndices(indicesConfig)),
+		timed('sectors', () => fetchSectorPerformance()),
+		timed('commodities', () => fetchCommodities(commodityConfigs))
 	]);
+	// #region agent log
+	fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			location: 'markets.ts:fetchAllMarkets',
+			message: 'end',
+			data: { durationMs: Date.now() - start },
+			timestamp: Date.now(),
+			sessionId: 'debug-session',
+			hypothesisId: 'C'
+		})
+	}).catch(() => {});
+	// #endregion
 
 	return { crypto, indices, sectors, commodities };
 }

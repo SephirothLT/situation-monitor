@@ -55,7 +55,10 @@
 	} from '$lib/analysis';
 	import {
 		fetchAllNews,
-		fetchAllMarkets,
+		fetchCryptoPrices,
+		fetchIndices,
+		fetchSectorPerformance,
+		fetchCommodities,
 		fetchPolymarket,
 		fetchWhaleTransactions,
 		fetchWhaleBalances,
@@ -206,37 +209,17 @@
 				})
 			}).catch(() => {});
 			// #endregion
-			data = await fetchAllMarkets(cryptoCoins, commodityConfigs, indicesConfig);
-			missingCrypto = cryptoCoins
-				.filter((c) => !data?.crypto.some((i) => i.id === c.id))
-				.map((c) => c.id)
-				.slice(0, 5);
-			missingCommodities = commodityConfigs
-				.filter((c) => !data?.commodities.some((i) => i.symbol === c.symbol))
-				.map((c) => c.symbol)
-				.slice(0, 5);
-			missingIndices = indicesConfig
-				.filter((c) => !data?.indices.some((i) => i.symbol === c.symbol))
-				.map((c) => c.symbol)
-				.slice(0, 5);
-			const mergedIndices = indicesConfig.map((sel) => {
-				return (
-					data?.indices.find((i) => i.symbol === sel.symbol) ??
-					optimisticIndices.find((i) => i.symbol === sel.symbol)
-				);
-			});
-			const mergedCommodities = commodityConfigs.map((sel) => {
-				return (
-					data?.commodities.find((i) => i.symbol === sel.symbol) ??
-					optimisticCommodities.find((i) => i.symbol === sel.symbol)
-				);
-			});
-			const mergedCrypto = cryptoCoins.map((sel) => {
-				return (
-					data?.crypto.find((i) => i.id === sel.id) ??
-					optimisticCrypto.find((i) => i.id === sel.id)
-				);
-			});
+			const cryptoPromise = fetchCryptoPrices(cryptoCoins);
+			const indicesPromise = fetchIndices(indicesConfig);
+			const sectorsPromise = fetchSectorPerformance();
+			const commoditiesPromise = fetchCommodities(commodityConfigs);
+
+			const [indicesData, sectorsData, commoditiesData] = await Promise.all([
+				indicesPromise,
+				sectorsPromise,
+				commoditiesPromise
+			]);
+
 			if (seq !== marketsLoadSeq) {
 				// #region agent log
 				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
@@ -254,16 +237,37 @@
 				// #endregion
 				return;
 			}
+
+			missingCommodities = commodityConfigs
+				.filter((c) => !commoditiesData.some((i) => i.symbol === c.symbol))
+				.map((c) => c.symbol)
+				.slice(0, 5);
+			missingIndices = indicesConfig
+				.filter((c) => !indicesData.some((i) => i.symbol === c.symbol))
+				.map((c) => c.symbol)
+				.slice(0, 5);
+
+			const mergedIndices = indicesConfig.map((sel) => {
+				return (
+					indicesData.find((i) => i.symbol === sel.symbol) ??
+					optimisticIndices.find((i) => i.symbol === sel.symbol)
+				);
+			});
+			const mergedCommodities = commodityConfigs.map((sel) => {
+				return (
+					commoditiesData.find((i) => i.symbol === sel.symbol) ??
+					optimisticCommodities.find((i) => i.symbol === sel.symbol)
+				);
+			});
 			// #region agent log
 			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					location: '+page.svelte:loadMarkets',
-					message: 'merge result',
+					message: 'merge result (fast)',
 					data: {
 						seq,
-						mergedCryptoLen: mergedCrypto.length,
 						mergedCommoditiesLen: mergedCommodities.length,
 						mergedIndicesLen: mergedIndices.length
 					},
@@ -275,9 +279,62 @@
 			// #endregion
 
 			markets.setIndices(mergedIndices);
-			markets.setSectors(data.sectors);
+			markets.setSectors(sectorsData);
 			markets.setCommodities(mergedCommodities);
+
+			const cryptoData = await cryptoPromise;
+			if (seq !== marketsLoadSeq) {
+				// #region agent log
+				fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: '+page.svelte:loadMarkets',
+						message: 'stale crypto result dropped',
+						data: { seq, current: marketsLoadSeq },
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						hypothesisId: 'D'
+					})
+				}).catch(() => {});
+				// #endregion
+				return;
+			}
+			missingCrypto = cryptoCoins
+				.filter((c) => !cryptoData.some((i) => i.id === c.id))
+				.map((c) => c.id)
+				.slice(0, 5);
+			const mergedCrypto = cryptoCoins.map((sel) => {
+				return (
+					cryptoData.find((i) => i.id === sel.id) ??
+					optimisticCrypto.find((i) => i.id === sel.id)
+				);
+			});
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/5d47d990-42fd-4918-bfab-27629ad4e356', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: '+page.svelte:loadMarkets',
+					message: 'merge result (crypto)',
+					data: {
+						seq,
+						mergedCryptoLen: mergedCrypto.length
+					},
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					hypothesisId: 'C'
+				})
+			}).catch(() => {});
+			// #endregion
 			markets.setCrypto(mergedCrypto);
+
+			data = {
+				crypto: mergedCrypto,
+				indices: mergedIndices,
+				sectors: sectorsData,
+				commodities: mergedCommodities
+			};
 		} catch (error) {
 			console.error('Failed to load markets:', error);
 		} finally {
